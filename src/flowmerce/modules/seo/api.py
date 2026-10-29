@@ -21,7 +21,7 @@ from .integrations.google import ga4_configured, ga4_report, gsc_configured, gsc
 from .integrations.shopify_public import fetch_public_articles
 from .integrations.status import all_statuses, mark_error, mark_success
 from .permissions import PERMISSIONS, ROLE_LABELS, is_role, perms_for
-from .services import analytics, articles, excel, publishing, workflow
+from .services import analytics, articles, excel, home, publishing, workflow
 from .services.brands import all_brands, brand, brand_public, update_brand_settings
 from .services.demo import clear_demo, demo_loaded, load_demo
 from .services.sync import products_for, sync_ga4, sync_gsc, sync_shopify
@@ -228,7 +228,11 @@ def overview(request: Request):
 
 @api.get("/tasks")
 def tasks(request: Request):
-    u = auth.require_user(request)
+    return _tasks_for(auth.require_user(request))
+
+
+def _tasks_for(u: dict) -> list[dict]:
+    """Work waiting on this user, filtered by their role. Shared by /tasks and /home so both agree."""
     p = perms_for(u["role"])
     out: list[dict] = []
 
@@ -249,6 +253,14 @@ def tasks(request: Request):
     if "topic:decide" in p:
         add(all_rows("SELECT id, brand_id, title, updated_at FROM topics WHERE status = 'validated' ORDER BY updated_at"), "topic", "Approve or reject topic", lambda r: "/topics?status=validated")
     return out
+
+
+@api.get("/home")
+def home_data(request: Request):
+    """Read-only summary for the Home page: real SEO & Blog records only, never synthetic figures (see services/home.py)."""
+    u = auth.require_perm(request, "view")
+    bl = brands_for(request)
+    return home.build_home(bl, _alerts(bl), _tasks_for(u))
 
 
 # ---------------- articles ----------------
