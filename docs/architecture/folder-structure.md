@@ -15,7 +15,8 @@ Flowmerce/
 │           ├── api.py app.py main.py cli.py config.py db.py auth.py permissions.py audit.py util.py
 │           ├── services/     business logic (articles, publishing, workflow, sync, analytics, excel, ...)
 │           └── integrations/ Shopify, Google (GSC+GA4), Claude clients and integration status
-├── frontend/                 React/TypeScript UI (approved exception, ADR 0002)
+├── frontend/                 React/TypeScript UI (approved exception, ADR 0002): shared shell, Home dashboard, SEO pages
+│   └── web/src/              pages/ (Home, Planned, SEO pages), components/ (Shell, home, ui), lib/ (routes registry, home data, api)
 │   ├── package.json  package-lock.json  vite.config.ts  .npmrc
 │   └── web/                  src/, public/, index.html, tsconfig.json, dist/ (built copy served by the backend)
 ├── tests/
@@ -41,7 +42,7 @@ Flowmerce/
 |---|---|
 | A business feature (ads, seo, ship, ...) | `src/flowmerce/modules/<module>/` with tests in `tests/unit/<module>/` |
 | A connection to Shopify, Meta, etc. | `src/flowmerce/integrations/<platform>/` for new platforms (create when needed); SEO-specific clients currently live in `modules/seo/integrations/` |
-| UI code | `frontend/` (TypeScript/React only, see ADR 0002) |
+| UI code | `frontend/` (TypeScript/React only, see ADR 0002). A new page goes in `web/src/pages/`, its entry in `web/src/lib/routes.ts`, and reusable parts in `web/src/components/` |
 | Settings or new environment variables | `src/flowmerce/config/`, plus `.env.example` and setup docs |
 | Logging, error types, base services | `src/flowmerce/core/` |
 | Code used by 2+ modules | `src/flowmerce/shared/` (create when the second user appears) |

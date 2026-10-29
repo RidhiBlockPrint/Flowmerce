@@ -15,6 +15,7 @@ Six planned modules on one shared foundation:
 
 - **Implemented:** the Python engineering foundation (package, configuration loading, logging setup, CLI `version` / `health`, tests, documentation) and the **SEO & Blog module**, migrated from the standalone `blog-ops` app into `src/flowmerce/modules/seo` (FastAPI + SQLite) with its React/TypeScript UI in `frontend/`. See [ADR 0003](docs/decisions/0003-blog-ops-migration-plan.md).
 - **Migration complete (2026-10-29):** the original `blog-ops/` folder was removed after its `.env`, `data/` and `backups/` were moved to the repository root and verified. The module has been smoke-tested but not exercised against live Shopify/Google/Claude credentials.
+- **Dashboard (2026-10-29):** the shared application shell and Home / Morning Brief page exist in `frontend/` (React/Vite). Home shows clearly labelled **demonstration data** only, and every project other than SEO & Blog Content, and every shared page (Approvals, Runs & Schedules, Alerts, Activity Log, Library, Settings), is a "Planned" page. Merchandising Automation is shown as future scope. The built UI is not in Git: run `npm ci` and `npm run build` in `frontend/` (Node.js required) before starting the server. See the [roadmap](docs/development/roadmap.md).
 - **Not built:** the other five modules, PostgreSQL, Celery/Redis and the shared approval engine (planning only).
 - **Planning documents (v0.1):** `docs/01-architecture.md`, `docs/02-connectors-and-apis.md`, `docs/03-data-model.md`, `db/schema.sql`, `architecture-map.html`. These describe the target design, not what is built.
 
@@ -50,6 +51,7 @@ mypy
 - [File registry](docs/FILE_REGISTRY.md)
 - [Setup](docs/development/setup.md) · [Coding standards](docs/development/coding-standards.md)
 - [Troubleshooting](docs/operations/troubleshooting.md)
+- [Project rules](PROJECT_RULES.md) (permanent engineering standards) · [Roadmap](docs/development/roadmap.md) (actual status and open decisions)
 - [Architecture decisions](docs/decisions/)
 - [Changelog](CHANGELOG.md)
 - Target design (planning v0.1): [architecture](docs/01-architecture.md), [connectors](docs/02-connectors-and-apis.md), [data model](docs/03-data-model.md)
