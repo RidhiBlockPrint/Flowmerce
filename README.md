@@ -50,7 +50,7 @@ mypy
 - [Folder structure](docs/architecture/folder-structure.md)
 - [File registry](docs/FILE_REGISTRY.md)
 - [Setup](docs/development/setup.md) · [Coding standards](docs/development/coding-standards.md)
-- [Troubleshooting](docs/operations/troubleshooting.md)
+- [Troubleshooting](docs/operations/troubleshooting.md) · [CI/CD](docs/operations/ci-cd.md) (what CI checks and how to run it locally)
 - [Project rules](PROJECT_RULES.md) (permanent engineering standards) · [Roadmap](docs/development/roadmap.md) (actual status and open decisions)
 - [Architecture decisions](docs/decisions/)
 - [Changelog](CHANGELOG.md)

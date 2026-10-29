@@ -2,6 +2,24 @@
 
 Format: newest first. Types: Added, Changed, Fixed, Removed, Architecture.
 
+## 2026-10-29 (CI, Stage A)
+
+### Added
+- `.github/workflows/ci.yml`: continuous integration on GitHub Actions. Jobs: `Python 3.12` and `Python 3.14` (`pip install -e ".[dev,seo]"`, `ruff check .`, `mypy`, `pytest -q`); `Frontend` (Node 24, `npm ci`, `npm run typecheck`, `npm run build`, built UI saved as an artifact); `Smoke test` (boots the app on a throwaway folder). No secrets, read-only permissions, Actions pinned to commit hashes.
+- `.github/dependabot.yml`: weekly update pull requests for pip, npm and GitHub Actions.
+- `scripts/ci_smoke.py`: Python smoke test (12 checks) usable locally and in CI.
+- `docs/operations/ci-cd.md` and `docs/decisions/0004-ci-cd-github-actions.md`.
+
+### Changed
+- Roadmap F1 (CI) now Implemented, not yet run on GitHub; new F12 (deployment) recorded as Planned and awaiting approval. README, setup and file registry updated.
+
+### Validation
+- `scripts/ci_smoke.py` ran locally twice (with and without the built UI): all checks passed, no temporary folders left behind; `ruff check .` passes; the 34 Python tests, mypy, `npm run typecheck` and the build still pass. The pinned Action hashes were verified against GitHub's API.
+- **Not validated:** the workflows have not run on GitHub; the YAML could not be machine-parsed locally; Python 3.12 and Linux have not been exercised.
+
+### Not done
+- Deployment, release artifacts and a container image (not approved); GitHub settings (branch protection, Dependabot alerts) are manual steps for the owner; `docs/architecture/folder-structure.md` does not yet list the new `.github/` folder.
+
 ## 2026-10-29 (Home: real SEO data, Stage 1)
 
 ### Added

@@ -25,6 +25,7 @@ Last updated: 2026-10-29. This reflects the repository as it is today. Rules for
 | `npm run typecheck` (`tsc --noEmit`) | Exit 0, no errors | 2026-10-29, Node v26.13.0, after Stage 1 |
 | `npm run build` (Vite 7) | Built successfully, `frontend/web/dist` regenerated | Same run |
 | Dashboard in a browser | Sign-in text, Home with demo off by default, real seeded records and sources, synthetic CPC fixtures withheld, `/publishing` and `/tasks` request counts per route, demo mode on and off; earlier: all routes, SEO pages, phone and tablet widths, keyboard focus | 2026-10-29, against an isolated test instance (temporary folder, seeded test records, no `.env`); not against real data. There is no automated frontend test suite. |
+| `scripts/ci_smoke.py` (the CI smoke test) | 12 of 12 checks passed, run twice (with and without the built UI); ruff clean | 2026-10-29, locally on Windows, Python 3.14.7, against a throwaway folder. Not run on Linux, on Python 3.12, or on GitHub. |
 
 The previous inspection report (Phase 1) quoted these results without re-running them. They were re-run for this roadmap, and the table above is the evidence. Nothing below has been exercised with real credentials or production data.
 
@@ -101,7 +102,7 @@ Blueprint: `docs/01-architecture.md` section 7.2.
 
 | # | Item | Status | Notes |
 |---|---|---|---|
-| F1 | Continuous integration (for example GitHub Actions running pytest, ruff and mypy) | **Planned** | None exists. Planning documents list GitHub Actions for CI/CD; the choice has not been made. |
+| F1 | Continuous integration (GitHub Actions): `.github/workflows/ci.yml` (ruff, mypy, pytest on Python 3.12 and 3.14; frontend type check and build on Node 24; a Python smoke test), `.github/dependabot.yml`, `scripts/ci_smoke.py` | **Implemented** (not yet run on GitHub) | See [ADR 0004](../decisions/0004-ci-cd-github-actions.md) and [CI/CD](../operations/ci-cd.md). The smoke script was run locally and passes; the workflow YAML could not be machine-validated locally and the pinned Action hashes were checked against GitHub's API. **Python 3.12 has never been run**, so the first run may fail there. Branch protection and other GitHub settings are manual steps for the owner. Deployment is not included (see F12). |
 | F2 | Install Node.js to rebuild and type-check the UI | **Verified** | Installed by the owner; Node v26.13.0, npm 12.2.1. This session's shell does not have Node on its PATH (open a new terminal). |
 | F3 | `.gitattributes` for consistent line endings | **Planned** | Git warns that LF will become CRLF on Windows. |
 | F4 | Real commit author identity | **Planned** | Commits so far use the placeholder `Flowmerce <it@thefabricrush.com>`; configure `user.name` and `user.email`. |
@@ -112,6 +113,7 @@ Blueprint: `docs/01-architecture.md` section 7.2.
 | F9 | Docs and the `run_seo.py` comment say the UI "ships pre-built", but `frontend/web/dist` is git-ignored and not in GitHub | **Planned** | Fresh clones must build the UI (Node required). `docs/development/setup.md` is updated; the `run_seo.py` comment is not. |
 | F10 | The Planned project cards on Home still read "Latest report: No reports yet" (`components/home.tsx`) | **Planned** | Truthful but could be read as a working project with no reports; would need a one-line change in a file outside the Stage 1 scope. |
 | F11 | Shared Home aggregate: Home reads only the SEO app's `/api/home`; the shell still sits inside the SEO app's sign-in | **Planned** | Extract a shared host when the second project starts or the database decision (B1) is made. |
+| F12 | Deployment and release automation (release artifacts, container image, deploy job with manual approval) | **Planned**, **Awaiting Approval** | Blocked on the hosting decision and the database decision (B1). Release artifacts and a container image were proposed as an optional Stage B and not approved. |
 
 ## Recommended next task
 

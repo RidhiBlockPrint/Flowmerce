@@ -42,6 +42,8 @@ ruff format --check .
 mypy
 ```
 
+The same checks run automatically on GitHub (see [CI/CD](../operations/ci-cd.md), which also lists the frontend commands and the local smoke test, `python scripts/ci_smoke.py`). CI runs `ruff check .` but not `ruff format --check .`, because the migrated SEO code is not formatted yet.
+
 ## SEO / Blog Ops module
 
 ```powershell
