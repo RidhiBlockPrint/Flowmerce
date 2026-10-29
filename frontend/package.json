@@ -1,8 +1,8 @@
 {
-  "name": "blog-ops-web",
+  "name": "flowmerce-web",
   "version": "1.0.0",
   "private": true,
-  "description": "React UI for Blog Ops. Only needed to change the UI; the Python backend serves the pre-built web/dist.",
+  "description": "React UI for Flowmerce. Build it with npm run build; web/dist is git-ignored and is served by the Python backend.",
   "type": "module",
   "scripts": {
     "dev": "vite",
