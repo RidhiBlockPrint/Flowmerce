@@ -1,0 +1,25 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+*.egg-info/
+build/
+dist/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Secrets and local configuration (never commit real credentials)
+.env
+.env.*
+!.env.example
+secrets/
+
+# Runtime data and logs
+data/
+backups/
+frontend/node_modules/
+logs/*
+!logs/.gitkeep
+*.log

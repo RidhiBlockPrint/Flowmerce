@@ -1,0 +1,61 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "flowmerce"
+version = "0.1.0"
+description = "Flowmerce: an e-commerce ERP platform (engineering foundation)."
+readme = "README.md"
+requires-python = ">=3.12"
+# Runtime dependencies are intentionally empty: the foundation uses only the standard library.
+# Add a dependency only with a note in docs/development/setup.md explaining why it is needed.
+dependencies = []
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "ruff>=0.6", "mypy>=1.11"]
+# Legacy blog-ops application (flowmerce.modules.seo). Versions carried over from blog-ops/requirements.txt.
+seo = [
+    "fastapi>=0.115",
+    "uvicorn>=0.32",
+    "httpx>=0.27",
+    "openpyxl>=3.1",
+    "anthropic>=0.68",
+    "google-auth>=2.35",
+    "requests>=2.32",
+]
+
+[project.scripts]
+flowmerce = "flowmerce.main:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-ra --import-mode=importlib"
+pythonpath = [".", "src"]
+
+[tool.ruff]
+line-length = 100
+src = ["src", "tests"]
+# Legacy code migrated from blog-ops: not yet linted/formatted/typed to project standards.
+# Remove these exclusions as the code is cleaned up (see docs/decisions/0003-blog-ops-migration-plan.md).
+extend-exclude = ["src/flowmerce/modules/seo", "tests/unit/seo", "tests/integration/seo", "tests/fixtures/seo.py", "scripts/run_seo.py"]
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "B", "UP", "N", "S"]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["S101"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+files = ["src"]
+
+[[tool.mypy.overrides]]
+# Legacy code migrated from blog-ops: untyped to strict standard. Tracked as technical debt.
+module = "flowmerce.modules.seo.*"
+ignore_errors = true
+follow_imports = "skip"

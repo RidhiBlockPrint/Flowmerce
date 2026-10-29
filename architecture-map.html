@@ -1,0 +1,313 @@
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Flowmerce Architecture Map</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Archivo:wght@500;700;800&family=IBM+Plex+Mono:wght@400;500&family=Public+Sans:wght@400;500;600&display=swap">
+<style>
+/* Layout: blueprint sheet. Header with three views (data flow, connectors, schema); flow view = SVG hexagon of modules around core + detail panel. */
+:root{
+  --bg:#F4F6F8; --sheet:#FFFFFF; --ink:#111722; --mute:#5D6779; --line:#D9DEE6; --grid:#E9EDF2; --soft:#EEF1F5;
+  --accent:#1B5BD6;
+  --ads:#2F6BDB; --seo:#1F9D6B; --ship:#D9860B; --crea:#7C4DD8; --page:#E0563B; --cro:#0E8FA0; --core:#111722;
+  --ess:#111722; --use:#5D6779; --opt:#A3ACBA;
+  --display:'Archivo',system-ui,sans-serif; --body:'Public Sans',system-ui,-apple-system,'Segoe UI',sans-serif; --mono:'IBM Plex Mono',ui-monospace,Menlo,Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --bg:#0B0F16; --sheet:#121824; --ink:#E7ECF4; --mute:#97A2B5; --line:#273246; --grid:#18202E; --soft:#182030;
+  --accent:#6F9CFF; --ads:#5B8DF0; --seo:#36BE88; --ship:#F0A43A; --crea:#A07BF5; --page:#FF7458; --cro:#2BB5C6; --core:#E7ECF4;
+  --ess:#E7ECF4; --use:#97A2B5; --opt:#4C576B; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0B0F16; --sheet:#121824; --ink:#E7ECF4; --mute:#97A2B5; --line:#273246; --grid:#18202E; --soft:#182030;
+  --accent:#6F9CFF; --ads:#5B8DF0; --seo:#36BE88; --ship:#F0A43A; --crea:#A07BF5; --page:#FF7458; --cro:#2BB5C6; --core:#E7ECF4;
+  --ess:#E7ECF4; --use:#97A2B5; --opt:#4C576B; color-scheme:dark}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.5;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.wrap{max-width:1240px;margin:0 auto;padding-block:28px 40px}
+header{display:flex;justify-content:space-between;align-items:flex-end;gap:20px;flex-wrap:wrap;border-bottom:1px solid var(--line);padding-bottom:18px}
+.eyebrow{font-family:var(--mono);font-size:12px;letter-spacing:.14em;text-transform:uppercase;color:var(--mute)}
+h1{font-family:var(--display);font-weight:800;font-size:clamp(30px,4vw,44px);margin:4px 0 0;letter-spacing:-.01em;text-wrap:balance}
+.sub{color:var(--mute);margin:6px 0 0;max-width:64ch}
+.tabs{display:flex;gap:4px;background:var(--soft);padding:4px;border-radius:10px;border:1px solid var(--line)}
+.tabs button{font:600 14px var(--body);color:var(--mute);background:none;border:0;padding:8px 14px;border-radius:7px;cursor:pointer}
+.tabs button[aria-selected="true"]{background:var(--sheet);color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.08)}
+button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.view{display:none;margin-top:22px}.view.on{display:block}
+.toolbar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:14px}
+.chip{font:500 13px var(--body);border:1px solid var(--line);background:var(--sheet);color:var(--ink);padding:6px 12px;border-radius:99px;cursor:pointer;display:inline-flex;align-items:center;gap:7px}
+.chip i{width:9px;height:9px;border-radius:50%;background:var(--c,var(--mute))}
+.chip[aria-pressed="true"]{border-color:var(--ink);background:var(--ink);color:var(--sheet)}
+.legend{display:flex;gap:16px;flex-wrap:wrap;font-size:12.5px;color:var(--mute);margin-left:auto}
+.legend span{display:inline-flex;align-items:center;gap:6px}
+.legend b{display:inline-block;width:22px;border-top:2px solid}
+.flow{display:grid;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr);gap:20px}
+.sheet{background:var(--sheet);border:1px solid var(--line);border-radius:14px;min-width:0}
+.diagram{padding:10px;background-image:linear-gradient(var(--grid) 1px,transparent 1px),linear-gradient(90deg,var(--grid) 1px,transparent 1px);background-size:24px 24px;background-color:var(--sheet)}
+svg{display:block;width:100%;height:auto}
+.node{cursor:pointer}
+.node rect{fill:var(--sheet);stroke-width:2}
+.node text{font-family:var(--display);font-weight:700;font-size:15px;fill:var(--ink)}
+.node .num{font-family:var(--mono);font-size:11px;font-weight:500;fill:var(--mute)}
+.node.dim{opacity:.28}
+.node:hover rect,.node.sel rect{stroke-width:3.5}
+.edge{fill:none;stroke-width:2;transition:opacity .2s}
+.edge.dim{opacity:.08}
+.edge.hl{stroke-width:3}
+.spoke{stroke:var(--line);stroke-width:1.5;stroke-dasharray:4 5}
+.hub circle{fill:var(--ink)}
+.hub text{fill:var(--sheet);font-family:var(--display);font-weight:800;font-size:16px;text-anchor:middle}
+.hub .s{font-family:var(--mono);font-weight:400;font-size:9.5px}
+.panel{padding:20px 22px}
+.panel h2{font-family:var(--display);font-weight:800;font-size:24px;margin:0;color:var(--c,var(--ink))}
+.panel .lead{color:var(--mute);margin:6px 0 14px}
+.sec{border-top:1px solid var(--line);padding-top:11px;margin-top:12px}
+.sec h3{font-family:var(--mono);font-weight:500;font-size:11.5px;letter-spacing:.12em;text-transform:uppercase;color:var(--mute);margin:0 0 7px}
+.tags{display:flex;flex-wrap:wrap;gap:6px}
+.tag{font-family:var(--mono);font-size:12px;background:var(--soft);border:1px solid var(--line);padding:2px 8px;border-radius:6px;overflow-wrap:anywhere}
+.fl{list-style:none;margin:0;padding:0;display:grid;gap:7px}
+.fl li{display:grid;grid-template-columns:auto 1fr;gap:9px;align-items:start;font-size:14px}
+.dot{width:10px;height:10px;border-radius:50%;margin-top:6px;background:var(--c)}
+.str{font-family:var(--mono);font-size:11px;color:var(--mute);margin-left:4px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:12px}
+.card{padding:14px 16px;display:flex;flex-direction:column;gap:8px}
+.card h4{margin:0;font-family:var(--display);font-weight:700;font-size:16px}
+.meta{display:flex;flex-wrap:wrap;gap:6px;font-size:12px}
+.badge{font-family:var(--mono);font-size:11px;padding:2px 7px;border-radius:5px;border:1px solid var(--line);color:var(--mute)}
+.badge.w{color:var(--page);border-color:var(--page)}
+.badge.v{color:var(--seo);border-color:var(--seo)}
+.mods{display:flex;gap:5px;margin-top:auto}
+.mods i{width:11px;height:11px;border-radius:3px;background:var(--c)}
+.card p{margin:0;font-size:13.5px;color:var(--mute)}
+.card.hide{display:none}
+.schema-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:12px}
+.schema h4{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.schema h4 span{font-family:var(--mono);font-size:12px;color:var(--mute);font-weight:400}
+.tbl{list-style:none;margin:0;padding:0;display:grid;gap:3px}
+.tbl li{font-family:var(--mono);font-size:12.5px;display:flex;justify-content:space-between;gap:8px}
+.tbl li em{font-style:normal;color:var(--accent);font-size:11px;white-space:nowrap}
+.note{margin-top:22px;color:var(--mute);font-size:13px}
+@media (max-width:900px){.flow{grid-template-columns:1fr}.legend{margin-left:0}}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style></head><body>
+
+<div class="wrap">
+<header>
+  <div>
+    <div class="eyebrow">Planning draft v0.1 · 28 Oct 2026</div>
+    <h1>Flowmerce architecture map</h1>
+    <p class="sub">Six modules on one shared master data layer and one action engine. Select a module to see what it reads, owns, sends and receives.</p>
+  </div>
+  <div class="tabs" role="tablist" aria-label="Views">
+    <button role="tab" id="t-flow" aria-selected="true" data-v="flow">Data flow</button>
+    <button role="tab" id="t-conn" aria-selected="false" data-v="conn">Connectors</button>
+    <button role="tab" id="t-schema" aria-selected="false" data-v="schema">Schema</button>
+  </div>
+</header>
+
+<section class="view on" id="v-flow">
+  <div class="toolbar">
+    <button class="chip" id="f-ess" aria-pressed="true">Essential links</button>
+    <button class="chip" id="f-use" aria-pressed="true">Useful links</button>
+    <button class="chip" id="f-opt" aria-pressed="true">Optional links</button>
+    <div class="legend"><span><b style="border-color:var(--ess)"></b>essential</span><span><b style="border-color:var(--use);border-top-style:dashed"></b>useful</span><span><b style="border-color:var(--opt);border-top-style:dotted"></b>optional</span><span><b style="border-color:var(--line);border-top-style:dashed"></b>reads core</span></div>
+  </div>
+  <div class="flow">
+    <div class="sheet diagram"><svg id="svg" viewBox="0 0 760 620" role="img" aria-label="Module data flow diagram"></svg></div>
+    <div class="sheet panel" id="panel" aria-live="polite"></div>
+  </div>
+</section>
+
+<section class="view" id="v-conn">
+  <div class="toolbar" id="connFilter"></div>
+  <div class="grid" id="connGrid"></div>
+  <p class="note">Verified: checked against shopify.dev on 28 Oct 2026. Verify: confirm the current version, scopes and limits in the provider's docs before building. Writes run only through an approved action.</p>
+</section>
+
+<section class="view" id="v-schema">
+  <div class="schema-grid" id="schemaGrid"></div>
+  <p class="note">PostgreSQL 16, one schema per area. Labels on core tables show which modules link through them. Full DDL in db/schema.sql.</p>
+</section>
+</div>
+
+<script>
+const M = {
+  ads:{n:'Meta & Google Ads',c:'var(--ads)',num:1,lead:'Ad accounts, structure, spend and results; diagnosis, recommendations and approved changes.',
+    reads:['Meta Marketing API','Google Ads API','Shopify orders (UTMs)'],
+    owns:['ads.campaign','ads.ad_group','ads.ad','ads.daily_metric','ads.breakdown_metric','ads.search_term_daily','ads.attribution_daily','ads.target','ads.change_history'],
+    events:['ads.anomaly_detected','ads.creative_fatigue'],
+    writes:['budget change (±20%/24h cap)','pause / enable','create ad (paused)','add negative keyword']},
+  seo:{n:'SEO & Blog Automation',c:'var(--seo)',num:2,lead:'Keywords, topics, hidden blog drafts, content scores, Search Console performance, AI-search visibility.',
+    reads:['Search Console API','Semrush API','Google Trends','Judge.me API','Shopify articles & products'],
+    owns:['seo.keyword','seo.keyword_metric_daily','seo.gsc_page_query_daily','seo.topic','seo.content_item','seo.content_score','seo.internal_link','seo.ai_visibility_check'],
+    events:['seo.topic_approved','seo.draft_created'],
+    writes:['hidden article draft (no approval)','publish article (approval)']},
+  ship:{n:'Shipping & Alerts',c:'var(--ship)',num:3,lead:'Shipments, tracking events, stuck and late alerts, stock readiness, production shortfalls, Amazon MCF.',
+    reads:['Shopify fulfillments & inventory','Amazon SP-API (MCF, FBA inventory)','AfterShip or 17TRACK','Shiprocket','Delhivery'],
+    owns:['ship.shipment','ship.tracking_event','ship.fulfillment_order','ship.inventory_snapshot','ship.mcf_eligibility','ship.production_requirement','ship.production_batch','ship.allocation'],
+    events:['ship.stock_low','ship.shipment_stuck','ship.mcf_eligible'],
+    writes:['create MCF fulfilment order (approval)']},
+  crea:{n:'Creative Strategist',c:'var(--crea)',num:4,lead:'Assets, concepts, hooks, briefs and creative tests grounded in performance data.',
+    reads:['Ads performance (internal)','Object storage','Judge.me reviews','Approved trend and competitor sources','Claude API'],
+    owns:['creative.asset','creative.concept','creative.brief','creative.performance_rollup','creative.test_plan','creative.trend_signal','creative.competitor_reference'],
+    events:['creative.concept_approved','creative.brief_approved'],
+    writes:['none directly; hands approved concepts to Ads and briefs to Pages']},
+  page:{n:'Landing Page Builder',c:'var(--page)',num:5,lead:'Plain-language brief to preview to approved deploy on Shopify, with versions and rollback.',
+    reads:['Creative briefs','Shopify products & pages','Reference URLs','PageSpeed Insights','Claude API','Playwright checks'],
+    owns:['page.landing_page','page.page_version','page.reference','page.validation_check','page.deployment'],
+    events:['page.version_ready_for_review','page.deployed'],
+    writes:['hidden page + metaobjects (approval)','publish page (approval)','theme PR via GitHub (approval)']},
+  cro:{n:'CRO',c:'var(--cro)',num:6,lead:'Page funnels, peer comparisons, diagnoses with confidence, winning patterns and experiments.',
+    reads:['ShopifyQL sessions','Shopify Web Pixel','GA4 Data API','Microsoft Clarity','PageSpeed / CrUX','Stock and price (core)'],
+    owns:['cro.web_event','cro.page_metric_daily','cro.page_attribute_snapshot','cro.speed_audit','cro.peer_group','cro.diagnosis','cro.pattern','cro.experiment'],
+    events:['cro.diagnosis_created','cro.experiment_approved','cro.experiment_concluded'],
+    writes:['change request becomes a new page version (approval)']}
+};
+const F = [
+  ['ads','crea','creative performance by asset, hook, angle','ess'],
+  ['crea','ads','approved concepts and assets for new paused ads','ess'],
+  ['crea','page','landing page brief','ess'],
+  ['ads','page','campaign, offer, destination','ess'],
+  ['page','cro','new page registered for measurement','ess'],
+  ['cro','page','approved change request as a new version','ess'],
+  ['ads','cro','high CTR but low conversion on a destination','use'],
+  ['cro','ads','page or journey issue behind an ad','use'],
+  ['ship','ads','promoted product low or out of stock','use'],
+  ['ship','page','stock and shipping status for page messaging','use'],
+  ['ship','cro','in-stock status as a CRO factor','use'],
+  ['seo','crea','search intent and customer questions','opt'],
+  ['seo','cro','organic page performance','opt']
+];
+const POS = {ads:-90, crea:-30, page:30, cro:90, seo:150, ship:210};
+const C = {x:380,y:310,r:225};
+const P = {}; for (const k in POS){const a=POS[k]*Math.PI/180;P[k]={x:C.x+C.r*Math.cos(a),y:C.y+C.r*Math.sin(a)}}
+const NS='http://www.w3.org/2000/svg';
+const svg=document.getElementById('svg');
+const el=(t,a,p)=>{const e=document.createElementNS(NS,t);for(const k in a)e.setAttribute(k,a[k]);(p||svg).appendChild(e);return e};
+let sel=null; const show={ess:true,use:true,opt:true};
+const css=v=>getComputedStyle(document.documentElement).getPropertyValue(v).trim();
+
+function draw(){
+  svg.innerHTML='';
+  const defs=el('defs',{});
+  ['ess','use','opt'].forEach(s=>{const m=el('marker',{id:'ah-'+s,viewBox:'0 0 10 10',refX:'9',refY:'5',markerWidth:'7',markerHeight:'7',orient:'auto-start-reverse'},defs);el('path',{d:'M0 0L10 5L0 10z',fill:css('--'+s)},m)});
+  for(const k in P) el('line',{x1:C.x,y1:C.y,x2:P[k].x,y2:P[k].y,class:'spoke'});
+  F.forEach(([a,b,label,s],i)=>{
+    if(!show[s])return;
+    const A=P[a],B=P[b];const dx=B.x-A.x,dy=B.y-A.y,len=Math.hypot(dx,dy);
+    const ux=dx/len,uy=dy/len;
+    const mx0=(A.x+B.x)/2,my0=(A.y+B.y)/2, vx=mx0-C.x, vy=my0-C.y, vl=Math.hypot(vx,vy);
+    let nx,ny;
+    if(vl>1){nx=vx/vl;ny=vy/vl}else{const [p1,p2]=[a,b].sort();const d=Math.hypot(P[p2].x-P[p1].x,P[p2].y-P[p1].y);nx=-(P[p2].y-P[p1].y)/d;ny=(P[p2].x-P[p1].x)/d}
+    const twin=F.some(f=>f[0]===b&&f[1]===a&&show[f[3]]);
+    const second=twin&&a>b;
+    const base=vl>1?40:185, off=base+(second?34:0), sh=twin?(second?9:-9):0;
+    const sx=A.x+ux*80+nx*sh, sy=A.y+uy*34+ny*sh;
+    const ex=B.x-ux*84+nx*sh, ey=B.y-uy*36+ny*sh;
+    const mx=mx0+nx*off, my=my0+ny*off;
+    const p=el('path',{d:`M${sx} ${sy} Q${mx} ${my} ${ex} ${ey}`,class:'edge',stroke:css('--'+s),'marker-end':`url(#ah-${s})`,'data-a':a,'data-b':b});
+    if(s==='use')p.setAttribute('stroke-dasharray','7 5'); if(s==='opt')p.setAttribute('stroke-dasharray','2 5');
+    const t=el('title',{},p);t.textContent=`${M[a].n} → ${M[b].n}: ${label}`;
+    if(sel){ if(a===sel||b===sel)p.classList.add('hl'); else p.classList.add('dim'); }
+  });
+  const hub=el('g',{class:'hub'});
+  el('circle',{cx:C.x,cy:C.y,r:60},hub);
+  el('text',{x:C.x,y:C.y-6},hub).textContent='core + ops';
+  el('text',{x:C.x,y:C.y+13,class:'s'},hub).textContent='master data';
+  el('text',{x:C.x,y:C.y+27,class:'s'},hub).textContent='approvals · audit';
+  for(const k in P){
+    const g=el('g',{class:'node'+(sel===k?' sel':'')+(sel&&sel!==k&&!linked(sel,k)?' dim':''),tabindex:'0',role:'button','aria-label':M[k].n});
+    el('rect',{x:P[k].x-78,y:P[k].y-32,width:156,height:64,rx:12,stroke:css(M[k].c.slice(4,-1))},g);
+    el('text',{x:P[k].x-64,y:P[k].y-8,class:'num'},g).textContent='0'+M[k].num;
+    const words=M[k].n.split(' ');let l1='',l2='';words.forEach(w=>{(l1+w).length<=15&&!l2?l1+=(l1?' ':'')+w:l2+=(l2?' ':'')+w});
+    el('text',{x:P[k].x-64,y:P[k].y+9},g).textContent=l1;
+    if(l2)el('text',{x:P[k].x-64,y:P[k].y+25},g).textContent=l2;
+    g.addEventListener('click',()=>pick(k));
+    g.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();pick(k)}});
+  }
+}
+const linked=(a,b)=>F.some(f=>show[f[3]]&&((f[0]===a&&f[1]===b)||(f[0]===b&&f[1]===a)));
+const strName={ess:'essential',use:'useful',opt:'optional'};
+function pick(k){sel=(sel===k?null:k);draw();panel()}
+function panel(){
+  const p=document.getElementById('panel');
+  if(!sel){p.style.setProperty('--c','var(--ink)');p.innerHTML=`<h2>Six modules, one foundation</h2><p class="lead">Every module reads shared master data from <span class="tag">core</span> and turns findings into alerts, recommendations and approved actions through <span class="tag">ops</span>. Links between modules are explicit and none is a prerequisite: each module still works on its own.</p>
+  <div class="sec"><h3>Shared keys that interlink modules</h3><ul class="fl">
+  <li><span class="dot" style="--c:var(--ink)"></span><span><b>Product</b> core.product, product_variant, product_identifier</span></li>
+  <li><span class="dot" style="--c:var(--ink)"></span><span><b>Page URL</b> core.web_page, one row per URL across ads, blogs, landing pages and CRO</span></li>
+  <li><span class="dot" style="--c:var(--ink)"></span><span><b>Order</b> core.order with UTMs and landing page</span></li>
+  <li><span class="dot" style="--c:var(--ink)"></span><span><b>Taxonomy</b> core.taxonomy_term: one vocabulary for hooks, angles, formats, funnel stages</span></li>
+  <li><span class="dot" style="--c:var(--ink)"></span><span><b>Brand rules</b> core.brand_rule: approved and banned claims</span></li></ul></div>
+  <div class="sec"><h3>Select a module</h3><div class="tags">${Object.keys(M).map(k=>`<button class="chip" style="--c:${M[k].c}" onclick="pick('${k}')"><i></i>${M[k].n}</button>`).join('')}</div></div>`;return}
+  const m=M[sel];p.style.setProperty('--c',m.c);
+  const out=F.filter(f=>f[0]===sel&&show[f[3]]), inn=F.filter(f=>f[1]===sel&&show[f[3]]);
+  const li=(f,o)=>`<li><span class="dot" style="--c:${M[o].c}"></span><span><b>${M[o].n}</b>: ${f[2]}<span class="str">${strName[f[3]]}</span></span></li>`;
+  p.innerHTML=`<div class="eyebrow">Module 0${m.num}</div><h2>${m.n}</h2><p class="lead">${m.lead}</p>
+  <div class="sec"><h3>Reads from</h3><div class="tags">${m.reads.map(x=>`<span class="tag">${x}</span>`).join('')}</div></div>
+  <div class="sec"><h3>Sends to</h3>${out.length?`<ul class="fl">${out.map(f=>li(f,f[1])).join('')}</ul>`:'<p class="lead" style="margin:0">Nothing required by other modules.</p>'}</div>
+  <div class="sec"><h3>Receives from</h3>${inn.length?`<ul class="fl">${inn.map(f=>li(f,f[0])).join('')}</ul>`:'<p class="lead" style="margin:0">Works from its own connectors and core data.</p>'}</div>
+  <div class="sec"><h3>Owns tables</h3><div class="tags">${m.owns.map(x=>`<span class="tag">${x}</span>`).join('')}</div></div>
+  <div class="sec"><h3>Events emitted</h3><div class="tags">${m.events.map(x=>`<span class="tag">${x}</span>`).join('')}</div></div>
+  <div class="sec"><h3>Writes (through ops.action)</h3><div class="tags">${m.writes.map(x=>`<span class="tag">${x}</span>`).join('')}</div></div>`;
+}
+['ess','use','opt'].forEach(s=>{const b=document.getElementById('f-'+s);b.onclick=()=>{show[s]=!show[s];b.setAttribute('aria-pressed',show[s]);draw();panel()}});
+
+/* connectors */
+const CONN=[
+ ['Shopify Admin GraphQL API','Commerce',['ads','seo','ship','crea','page','cro'],'Webhooks + polling + bulk','Read + limited write',true,'Products, variants, inventory, orders with UTMs, fulfilments, pages, articles, metaobjects, ShopifyQL sessions.'],
+ ['Shopify Web Pixel','Analytics',['cro','page','ads'],'Push to collector','Events in',true,'page_viewed, product_added_to_cart, checkout_started, checkout_completed into cro.web_event.'],
+ ['Meta Marketing API','Ads',['ads','crea'],'Polling, async insight jobs','Read + approved write',false,'Structure, daily insights, breakdowns, creatives. Writes: budget, status, paused ads.'],
+ ['Google Ads API','Ads',['ads','crea','seo'],'GAQL search stream','Read + approved write',false,'Campaigns, ad groups, asset groups, search terms. Writes: budget, status, negatives.'],
+ ['Google Search Console API','SEO',['seo','cro'],'Daily, 4-day re-pull','Read',false,'Page x query clicks, impressions, position; URL inspection for new articles.'],
+ ['GA4 Data API','Analytics',['cro','seo','ads'],'Daily','Read',false,'Landing page funnels by channel and device, as a cross-check.'],
+ ['PageSpeed Insights + CrUX','Performance',['cro','page'],'Weekly + on deploy','Read',false,'Lab scores and real-user LCP, CLS, INP.'],
+ ['Microsoft Clarity export','Behaviour',['cro'],'Daily','Read',false,'Dead clicks, rage clicks, scroll depth by URL (small quota).'],
+ ['Amazon SP-API','Fulfilment',['ship'],'Polling + notifications','Read + approved write',false,'FBA inventory, MCF preview and orders, package tracking.'],
+ ['AfterShip or 17TRACK','Tracking',['ship'],'Webhooks + polling fallback','Read',false,'Normalised tracking for international carriers. Pick one.'],
+ ['Shiprocket','India shipping',['ship'],'Webhooks + polling','Read',false,'India-side shipments and AWB tracking.'],
+ ['Delhivery','India shipping',['ship'],'Polling','Read',false,'Waybill tracking if used directly.'],
+ ['Semrush API','SEO',['seo','crea'],'Daily','Read',false,'Keyword estimates, related keywords, competitor positions.'],
+ ['Google Trends','SEO',['seo','crea'],'Daily','Read',false,'Relative interest. Approved exports until official API access.'],
+ ['Judge.me API','Reviews',['seo','crea','cro','page'],'Daily','Read',false,'Ratings, review text, questions, social proof.'],
+ ['Claude API','AI',['seo','crea','page','cro','ads'],'On demand','Generate',false,'Drafts, briefs, hooks, page copy, explanations. Logged in ops.llm_call.'],
+ ['Slack API','Messaging',['ads','seo','ship','crea','page','cro'],'Push + buttons','Send',false,'Alerts, digests and approval buttons.'],
+ ['WhatsApp Cloud API','Messaging',['ship'],'Push','Send templates',false,'Critical shipping alerts to the ops team.'],
+ ['GitHub API','DevOps',['page'],'Push','Branch + PR',false,'Theme pull requests for new landing page layouts.'],
+ ['Object storage (S3)','Storage',['crea','page'],'On demand','Read + write',false,'Creative files, page bundles, screenshots.']
+];
+let cf=null;
+const cg=document.getElementById('connGrid'),cfl=document.getElementById('connFilter');
+const allB=document.createElement('button');allB.className='chip';allB.textContent='All modules';allB.setAttribute('aria-pressed','true');allB.onclick=()=>{cf=null;renderConn()};cfl.appendChild(allB);
+Object.keys(M).forEach(k=>{const b=document.createElement('button');b.className='chip';b.style.setProperty('--c',M[k].c);b.innerHTML=`<i></i>${M[k].n}`;b.dataset.k=k;b.setAttribute('aria-pressed','false');b.onclick=()=>{cf=k;renderConn()};cfl.appendChild(b)});
+function renderConn(){
+  [...cfl.children].forEach(b=>b.setAttribute('aria-pressed',String(cf?b.dataset.k===cf:!b.dataset.k)));
+  cg.innerHTML=CONN.map(([n,cat,mods,mode,rw,ver,desc])=>`<div class="sheet card${cf&&!mods.includes(cf)?' hide':''}"><h4>${n}</h4><div class="meta"><span class="badge">${cat}</span><span class="badge${/write|PR|Send|Generate/.test(rw)?' w':''}">${rw}</span><span class="badge${ver?' v':''}">${ver?'Verified':'Verify'}</span></div><p>${desc}</p><p><span class="badge">${mode}</span></p><div class="mods">${mods.map(m=>`<i style="--c:${M[m].c}" title="${M[m].n}"></i>`).join('')}</div></div>`).join('');
+}
+renderConn();
+
+/* schema */
+const S=[
+ ['core','Master data shared by all modules',[['store'],['product','all'],['product_variant','all'],['product_identifier','ship, ads'],['product_cost','ads'],['collection'],['location','ship'],['inventory_level','ship, ads, page, cro'],['customer'],['order','ads, ship, cro, seo'],['order_line','ship'],['web_page','ads, seo, page, cro'],['product_review_stats','seo, crea, cro'],['taxonomy_term','crea, ads, page, seo'],['entity_tag','crea, ads, page, seo'],['brand_rule','seo, crea, page']]],
+ ['ops','Shared action engine',[['event_outbox'],['event_subscription'],['alert_rule'],['alert'],['recommendation'],['approval_policy'],['action'],['approval'],['outcome'],['task'],['notification'],['audit_log'],['llm_call']]],
+ ['ads','Meta + Google Ads',[['ad_account'],['campaign'],['ad_group'],['ad'],['keyword'],['daily_metric'],['breakdown_metric'],['search_term_daily'],['attribution_daily'],['target'],['change_history']]],
+ ['seo','SEO & blog automation',[['keyword_cluster'],['keyword'],['keyword_metric_daily'],['gsc_page_query_daily'],['topic'],['content_item'],['content_score'],['internal_link'],['ai_visibility_check']]],
+ ['ship','Shipping, readiness, MCF',[['fulfillment_order'],['shipment'],['tracking_event'],['inventory_snapshot'],['mcf_eligibility'],['production_requirement'],['production_batch'],['allocation']]],
+ ['creative','Creative strategist',[['asset'],['asset_product'],['concept'],['concept_asset'],['brief'],['performance_rollup'],['test_plan'],['trend_signal'],['competitor_reference']]],
+ ['page','Landing page builder',[['landing_page'],['landing_page_product'],['reference'],['page_version'],['validation_check'],['deployment']]],
+ ['cro','Conversion rate optimization',[['web_event'],['page_metric_daily'],['page_attribute_snapshot'],['speed_audit'],['peer_group'],['peer_group_member'],['diagnosis'],['pattern'],['experiment']]],
+ ['integration','Connections and syncing',[['provider'],['connection'],['sync_job'],['sync_run'],['webhook_subscription']]],
+ ['raw','Replayable payloads',[['api_payload'],['webhook_event']]],
+ ['auth','Users and roles',[['app_user']]]
+];
+document.getElementById('schemaGrid').innerHTML=S.map(([n,d,t])=>`<div class="sheet card schema"><h4>${n}<span>${t.length} tables</span></h4><p>${d}</p><ul class="tbl">${t.map(([x,u])=>`<li>${x}${u?`<em>${u}</em>`:''}</li>`).join('')}</ul></div>`).join('');
+
+/* tabs */
+document.querySelectorAll('.tabs button').forEach(b=>b.onclick=()=>{
+  document.querySelectorAll('.tabs button').forEach(x=>x.setAttribute('aria-selected',String(x===b)));
+  document.querySelectorAll('.view').forEach(v=>v.classList.toggle('on',v.id==='v-'+b.dataset.v));
+  if(b.dataset.v==='flow')draw();
+});
+const h=location.hash.slice(1);if(['conn','schema'].includes(h))document.querySelector(`[data-v="${h}"]`).click();
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change',draw);
+new MutationObserver(draw).observe(document.documentElement,{attributes:true,attributeFilter:['data-theme']});
+draw();panel();
+</script>
+</body></html>
