@@ -45,16 +45,16 @@ export function Login({ onSignedIn }: { onSignedIn: () => void }) {
         <Pattern />
         <div className="row gap-12">
           <LogoMark />
-          <span className="serif" style={{ fontSize: 20 }}>Blog Ops</span>
+          <span className="serif" style={{ fontSize: 20 }}>Flowmerce</span>
         </div>
         <div>
-          <p className="serif" style={{ fontSize: 34, lineHeight: 1.2, margin: '0 0 14px', maxWidth: 520 }}>One desk for every story told about hand block-printed cotton.</p>
+          <p className="serif" style={{ fontSize: 34, lineHeight: 1.2, margin: '0 0 14px', maxWidth: 520 }}>Ecommerce in a Flow.</p>
           <div className="row-wrap gap-12" style={{ opacity: 0.85 }}>
             <span className="row"><span className="brand-dot" style={{ background: '#EFB34C' }} />Ridhi Block Print</span>
             <span className="row"><span className="brand-dot" style={{ background: '#F1D3C1' }} />Cotton Print Club</span>
           </div>
         </div>
-        <p className="small" style={{ opacity: 0.6, margin: 0 }}>Topics, drafts, reviews, Shopify publishing and search performance — with nothing going live without an authorized sign-off.</p>
+        <p className="small" style={{ opacity: 0.6, margin: 0 }}>A shared workspace for your e-commerce operations and growth.</p>
       </div>
       <div className="login-form">
         <form className="login-card col gap-16" onSubmit={submit}>

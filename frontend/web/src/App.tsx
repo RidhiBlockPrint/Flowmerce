@@ -7,7 +7,10 @@ import { Shell } from './components/Shell';
 import { LoadingBlock, ErrorState, Empty } from './components/ui';
 import { LogoMark } from './components/Icon';
 import { Login } from './pages/Login';
+import { PLANNED_ROUTES } from './lib/routes';
 
+const Home = lazy(() => import('./pages/Home'));
+const Planned = lazy(() => import('./pages/Planned'));
 const Overview = lazy(() => import('./pages/Overview'));
 const Workspace = lazy(() => import('./pages/Workspace'));
 const Blogs = lazy(() => import('./pages/Blogs'));
@@ -55,7 +58,9 @@ export function App() {
       <Shell>
         <Suspense fallback={<LoadingBlock rows={6} />}>
           <Routes>
-            <Route path="/" element={<Overview />} />
+            <Route path="/" element={<Home />} />
+            <Route path="/seo" element={<Overview />} />
+            {PLANNED_ROUTES.map((r) => <Route key={r.to} path={r.to} element={<Planned />} />)}
             <Route path="/workspace/:brand" element={<Workspace />} />
             <Route path="/blogs" element={<Blogs />} />
             <Route path="/blogs/:id" element={<ArticleEditor />} />
@@ -80,7 +85,7 @@ function Splash() {
     <div style={{ minHeight: '100vh', display: 'grid', placeItems: 'center' }} aria-busy="true">
       <div className="col" style={{ alignItems: 'center', gap: 12 }}>
         <LogoMark className="logo-mark" />
-        <span className="muted small">Loading Blog Ops…</span>
+        <span className="muted small">Loading Flowmerce…</span>
       </div>
     </div>
   );

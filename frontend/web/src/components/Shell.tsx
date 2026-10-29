@@ -1,11 +1,12 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
-import { NavLink, useLocation, useNavigate } from 'react-router-dom';
+import { Link, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { Icon, LogoMark } from './Icon';
 import { Button, Menu, BrandTag } from './ui';
 import { Dialog, Drawer, useToast } from './overlays';
 import { api, useApi, qs } from '../lib/api';
 import { useApp, presetRange } from '../lib/app';
 import { fmtDate, initials, timeAgo } from '../lib/format';
+import { MERCHANDISING, MODULES, OPERATIONS, STATUS_LABEL, isSeoPath, type NavEntry } from '../lib/routes';
 import type { BrandFilter } from '../lib/types';
 
 export function Shell({ children }: { children: ReactNode }) {
@@ -13,14 +14,27 @@ export function Shell({ children }: { children: ReactNode }) {
   const [navOpen, setNavOpen] = useState(false);
   const [tasksOpen, setTasksOpen] = useState(false);
   const loc = useLocation();
-  useEffect(() => setNavOpen(false), [loc.pathname]);
-  const counts = useApi<{ requests: any[] }>(`/publishing${qs({ brand: brand === 'all' ? undefined : brand })}`);
-  const tasks = useApi<any[]>('/tasks');
-  useEffect(() => { counts.reload(); tasks.reload(); }, [loc.pathname]); // eslint-disable-line react-hooks/exhaustive-deps
+  const inSeo = isSeoPath(loc.pathname);
+  // Tasks are SEO & Blog work for the signed-in role, so they only matter on SEO pages and on Home.
+  // /publishing only feeds the SEO sidebar count. Neither request is made anywhere else (a null path skips the request).
+  const showTasks = inSeo || loc.pathname === '/';
+  useEffect(() => { setNavOpen(false); setTasksOpen(false); }, [loc.pathname]);
+  const counts = useApi<{ requests: any[] }>(inSeo ? `/publishing${qs({ brand: brand === 'all' ? undefined : brand })}` : null);
+  const tasks = useApi<any[]>(showTasks ? '/tasks' : null);
+  const lastPath = useRef(loc.pathname);
+  useEffect(() => {
+    // Refresh after moving between pages of an area that is already loaded; entering an area fetches by itself.
+    const was = lastPath.current;
+    lastPath.current = loc.pathname;
+    if (was === loc.pathname) return;
+    if (inSeo && isSeoPath(was)) counts.reload();
+    if (showTasks && (isSeoPath(was) || was === '/')) tasks.reload();
+  }, [loc.pathname]); // eslint-disable-line react-hooks/exhaustive-deps
   const pendingPublish = counts.data?.requests.filter((r) => r.status === 'pending' || r.status === 'failed').length ?? 0;
 
   return (
     <>
+      <a className="skip-link" href="#main">Skip to content</a>
       {me.demoLoaded ? <div className="banner-demo">Demo analytics fixtures are loaded — figures marked “Demo” are synthetic, not business data</div> : null}
       <div className="shell">
         {navOpen ? <div className="sidebar-scrim" onClick={() => setNavOpen(false)} /> : null}
@@ -28,37 +42,47 @@ export function Shell({ children }: { children: ReactNode }) {
           <NavLink to="/" className="logo">
             <LogoMark />
             <span>
-              <span className="logo-text">Blog Ops</span>
-              <span className="logo-sub" style={{ display: 'block' }}>Ridhi · Cotton Print Club</span>
+              <span className="logo-text">Flowmerce</span>
+              <span className="logo-sub" style={{ display: 'block' }}>Ecommerce in a Flow</span>
             </span>
           </NavLink>
           <nav>
-            <NavItem to="/" icon="overview" end>Overview</NavItem>
+            <NavItem to="/" icon="home" end>Home</NavItem>
             <div className="nav-group">
-              <div className="nav-label">Workspaces</div>
-              {me.brands.map((b) => (
-                <NavLink key={b.id} to={`/workspace/${b.id}`} className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
-                  <span className={`brand-dot ${b.id}`} style={{ margin: '0 4px' }} />{b.name}
-                </NavLink>
-              ))}
+              <div className="nav-label">Projects</div>
+              {MODULES.map((m) => (m.id === 'seo' ? (
+                <div key={m.id}>
+                  <Link to={m.to} className={`nav-item entry ${inSeo ? 'active' : ''}`} aria-current={loc.pathname === m.to ? 'page' : undefined} title={m.purpose}>
+                    <Icon name={m.icon} /><span className="nav-text">{m.label}</span>
+                  </Link>
+                  {inSeo ? (
+                    <div className="nav-sub" role="group" aria-label="SEO & Blog Content pages">
+                      {me.brands.map((b) => (
+                        <NavLink key={b.id} to={`/workspace/${b.id}`} className={({ isActive }) => `nav-item ${isActive ? 'active' : ''}`}>
+                          <span className={`brand-dot ${b.id}`} style={{ margin: '0 4px' }} />{b.name}
+                        </NavLink>
+                      ))}
+                      <NavItem to="/blogs" icon="blogs">Blogs</NavItem>
+                      <NavItem to="/topics" icon="topics">Topics &amp; keywords</NavItem>
+                      <NavItem to="/publishing" icon="publish" count={pendingPublish} alert={counts.data?.requests.some((r) => r.status === 'failed')}>Publishing</NavItem>
+                      <NavItem to="/analytics" icon="analytics">SEO &amp; traffic</NavItem>
+                      <NavItem to="/automation" icon="automation">Automation</NavItem>
+                      <NavItem to="/data" icon="sheet">Data &amp; reports</NavItem>
+                      <NavItem to="/integrations" icon="plug">Integrations</NavItem>
+                      {can('audit:view') ? <NavItem to="/audit" icon="audit">Audit log</NavItem> : null}
+                      {can('users:manage') ? <NavItem to="/users" icon="users">Users &amp; roles</NavItem> : null}
+                    </div>
+                  ) : null}
+                </div>
+              ) : <EntryItem key={m.id} entry={m} />))}
             </div>
             <div className="nav-group">
-              <div className="nav-label">Content</div>
-              <NavItem to="/blogs" icon="blogs">Blogs</NavItem>
-              <NavItem to="/topics" icon="topics">Topics &amp; keywords</NavItem>
-              <NavItem to="/publishing" icon="publish" count={pendingPublish} alert={counts.data?.requests.some((r) => r.status === 'failed')}>Publishing</NavItem>
+              <div className="nav-label">Operations</div>
+              {OPERATIONS.map((o) => <EntryItem key={o.to} entry={o} />)}
             </div>
             <div className="nav-group">
-              <div className="nav-label">Performance</div>
-              <NavItem to="/analytics" icon="analytics">SEO &amp; traffic</NavItem>
-              <NavItem to="/automation" icon="automation">Automation</NavItem>
-            </div>
-            <div className="nav-group">
-              <div className="nav-label">Data</div>
-              <NavItem to="/data" icon="sheet">Data &amp; reports</NavItem>
-              <NavItem to="/integrations" icon="plug">Integrations</NavItem>
-              {can('audit:view') ? <NavItem to="/audit" icon="audit">Audit log</NavItem> : null}
-              {can('users:manage') ? <NavItem to="/users" icon="users">Users &amp; roles</NavItem> : null}
+              <div className="nav-label">Future scope</div>
+              <EntryItem entry={MERCHANDISING} />
             </div>
           </nav>
           <div className="sidebar-foot">
@@ -69,20 +93,33 @@ export function Shell({ children }: { children: ReactNode }) {
           <header className="topbar">
             <Button className="menu-btn" variant="ghost" iconOnly icon="menu" aria-label="Open navigation" onClick={() => setNavOpen(true)} />
             <BrandSwitch />
-            <GlobalSearch />
+            {inSeo ? <GlobalSearch /> : null}
             <div className="row" style={{ marginLeft: 'auto' }}>
-              <RangePicker />
-              <Button variant="ghost" icon="tasks" onClick={() => setTasksOpen(true)} aria-label={`My tasks (${tasks.data?.length ?? 0})`}>
-                <span className="hide-sm">Tasks</span>
-                {tasks.data?.length ? <span className="pill accent" style={{ height: 18, padding: '0 6px' }}>{tasks.data.length}</span> : null}
-              </Button>
+              {inSeo ? <RangePicker /> : null}
+              {showTasks ? (
+                <Button variant="ghost" icon="tasks" onClick={() => setTasksOpen(true)} aria-label={`My tasks (${tasks.data?.length ?? 0})`}>
+                  <span className="hide-sm">Tasks</span>
+                  {tasks.data?.length ? <span className="pill accent" style={{ height: 18, padding: '0 6px' }}>{tasks.data.length}</span> : null}
+                </Button>
+              ) : null}
             </div>
           </header>
-          <main className="content" id="main">{children}</main>
+          <main className="content" id="main" tabIndex={-1}>{children}</main>
         </div>
       </div>
-      {tasksOpen ? <TasksDrawer tasks={tasks.data ?? []} loading={tasks.loading} onClose={() => setTasksOpen(false)} /> : null}
+      {tasksOpen && showTasks ? <TasksDrawer tasks={tasks.data ?? []} loading={tasks.loading} onClose={() => setTasksOpen(false)} /> : null}
     </>
+  );
+}
+
+/** A sidebar link for a registry entry; pages that are not built yet carry a small status tag. */
+function EntryItem({ entry }: { entry: NavEntry }) {
+  return (
+    <NavLink to={entry.to} className={({ isActive }) => `nav-item entry ${isActive ? 'active' : ''} ${entry.status === 'future' ? 'future' : ''}`} title={entry.purpose}>
+      <Icon name={entry.icon} />
+      <span className="nav-text">{entry.label}</span>
+      {entry.status !== 'available' ? <span className="nav-tag">{STATUS_LABEL[entry.status]}</span> : null}
+    </NavLink>
   );
 }
 

@@ -1,4 +1,4 @@
-/* Blog Ops design system.
+/* Flowmerce design system (first built for the SEO & Blog area).
  * Paper, ink and line come from the two storefronts: Cotton Print Club's #F5F4F4 paper and black
  * serif headings, Ridhi's Libre Caslon headings over Plus Jakarta Sans. Brand accents switch with
  * the brand filter — Ridhi crimson #850000 with saffron, CPC umber #7D6557 with blush. */
@@ -499,6 +499,46 @@ a.stat:hover { border-color: var(--line); background: var(--surface-3); text-dec
 .progress { height: 6px; background: var(--surface-3); border-radius: 3px; overflow: hidden; }
 .progress > span { display: block; height: 100%; background: var(--accent); }
 .banner-demo { background: repeating-linear-gradient(135deg, var(--demo-soft), var(--demo-soft) 10px, #e9e1f8 10px, #e9e1f8 20px); color: var(--demo); font-weight: 650; font-size: 12px; text-align: center; padding: 5px 12px; border-bottom: 1px solid #ddd2f4; }
+
+/* ---------- Flowmerce shell and Home ---------- */
+.skip-link { position: absolute; left: 8px; top: -48px; z-index: 200; background: var(--accent); color: var(--accent-contrast); padding: 8px 14px; border-radius: 8px; font-weight: 600; }
+.skip-link:focus { top: 8px; }
+.nav-sub { margin: 2px 0 6px 12px; padding-left: 8px; border-left: 1px solid var(--line-2); }
+.nav-sub .nav-item { height: 30px; font-size: 13px; }
+.nav-tag { margin-left: auto; font-size: 10px; font-weight: 650; letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted); white-space: nowrap; }
+.nav-item.future { color: var(--muted); }
+.nav-item.entry { height: auto; min-height: 34px; padding-top: 6px; padding-bottom: 6px; }
+.nav-text { flex: 1; min-width: 0; line-height: 1.3; }
+.main:focus-visible, .content:focus-visible { outline: none; }
+
+.module-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 16px; }
+.module-card { display: flex; flex-direction: column; gap: 10px; padding: 16px; color: inherit; }
+.module-card:hover { text-decoration: none; }
+.module-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.module-icon { width: 30px; height: 30px; border-radius: 8px; background: var(--accent-soft); color: var(--accent-ink); display: grid; place-items: center; flex: none; }
+.module-name { font-weight: 650; font-size: 14.5px; flex: 1; min-width: 0; }
+.module-purpose { color: var(--ink-2); font-size: 13px; line-height: 1.45; }
+.module-latest { margin-top: auto; padding-top: 10px; border-top: 1px solid var(--line-2); display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.module-latest-row { display: flex; align-items: center; gap: 8px; min-width: 0; flex-wrap: wrap; }
+
+.brief-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 10px; }
+.brief-list li { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+
+.list-row { text-decoration: none; }
+a.list-row:hover { background: var(--surface-2); text-decoration: none; }
+.list-icon { width: 28px; height: 28px; border-radius: 8px; background: var(--surface-3); color: var(--ink-2); display: grid; place-items: center; flex: none; }
+.list-icon.ok { background: var(--ok-soft); color: var(--ok); }
+.list-icon.warn { background: var(--warn-soft); color: var(--warn); }
+.list-icon.crit { background: var(--crit-soft); color: var(--crit); }
+.list-icon.info { background: var(--info-soft); color: var(--info); }
+.card.flush > .card-body .alert-list .alert-item { padding-left: 16px; padding-right: 16px; }
+.card.flush > .card-body .empty { padding: 28px 20px; }
+
+.quicknav { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 8px; }
+.quick-link { display: flex; align-items: center; gap: 10px; padding: 10px 12px; border: 1px solid var(--line); border-radius: var(--r); background: var(--surface); color: var(--ink); font-weight: 550; font-size: 13.5px; min-width: 0; }
+.quick-link:hover { border-color: #d6cdc2; box-shadow: var(--shadow-1); text-decoration: none; }
+.quick-link .icon { color: var(--muted); }
+.quick-link .pill { margin-left: auto; }
 
 /* ---------- responsive ---------- */
 @media (max-width: 1180px) {
