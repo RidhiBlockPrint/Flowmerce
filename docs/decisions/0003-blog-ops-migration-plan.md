@@ -35,6 +35,6 @@ Risk of breaking a working app; SQLite (blog-ops) vs PostgreSQL (planned) reconc
 
 ## Consequences and dependencies
 - Original `blog-ops/` deleted on 2026-10-29 after byte-for-byte verification of `.env`, the SQLite database and backups at the root; its `make_zip.py` and local `.venv` were not carried over.
-- Remaining: run `git init` (no repository exists yet, so history cannot be preserved).
+- `git init` run on 2026-10-29 (branch `main`); the blog-ops history before this point was not preserved because no repository existed.
 - Not verified: the frontend was not rebuilt or type-checked; the migrated app was only exercised with the test suite and a smoke test on a temporary data directory, not with real credentials or data.
 - Open: SQLite vs PostgreSQL; Next.js vs the existing Vite/React app; keep or replace `run_seo.bat`; decouple and move integrations; lint/type cleanup of legacy code.

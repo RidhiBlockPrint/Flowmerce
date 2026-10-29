@@ -2,6 +2,11 @@
 
 Format: newest first. Types: Added, Changed, Fixed, Removed, Architecture.
 
+## 2026-10-29 (git)
+
+### Added
+- Git repository initialised on branch `main` with one initial commit; `.env`, `data/`, `backups/` and `.venv/` verified as ignored.
+
 ## 2026-10-29 (blog-ops removed)
 
 ### Removed
