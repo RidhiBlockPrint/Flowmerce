@@ -12,7 +12,7 @@ Related documents: [README](README.md) · [Roadmap](docs/development/roadmap.md)
 
 1. Python is the primary language (ADR 0001).
 2. Approved exceptions are recorded in [ADR 0002](docs/decisions/0002-approved-language-exceptions.md) and are limited to:
-   - TypeScript/JavaScript (React) for the **existing web UI in `frontend/`** only. It does not cover backend, integration or business logic, and it does not approve new UI frameworks (for example Next.js, which the planning documents mention) or any other language.
+   - **Python is the backend language.** The frontend is **Next.js + React in JavaScript/JSX only** (owner decision, [ADR 0006](docs/decisions/0006-nextjs-javascript-frontend.md)), in `frontend/`. **TypeScript is not allowed in the frontend**: no `.ts`/`.tsx` files, no `tsconfig`, no `typescript` or `@types/*` packages, no type annotations. Vite is no longer used. The frontend calls the Python API through `/api/...` and holds no credentials, backend, integration or business logic. It does not approve any other UI framework or language.
    - Plain `.sql` files for database schema only, under `db/`.
 3. Any other language (including shell or batch scripts beyond what already exists) needs an explanation of why it is needed, what it provides and whether a Python alternative exists, **and the owner's explicit approval before any code is written**. A framework or tutorial recommending a language is not approval.
 4. Markdown and ordinary configuration files are always allowed. A tool whose configuration contains executable code in another language needs approval first.

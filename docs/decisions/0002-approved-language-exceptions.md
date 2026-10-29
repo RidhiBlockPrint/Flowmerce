@@ -23,3 +23,6 @@ A second toolchain (Node, npm, Vite) for UI work; schema changes happen in SQL r
 - Open: the planning docs name **Next.js** for the new dashboard. The approval covers "TS/JS for the UI" but the choice of framework (Next.js vs the existing Vite/React app) is not yet decided. Ask before starting new UI code.
 - Where the UI folder will live after migration is proposed in ADR 0003.
 - Any further language (Go, PHP, shell/batch scripts beyond the existing `run.bat`, etc.) still needs approval.
+
+## Update (2026-10-29)
+The owner decided the web UI is **Next.js + React in JavaScript/JSX only, with no TypeScript**, replacing Vite and TypeScript: see [ADR 0006](0006-nextjs-javascript-frontend.md). This closes the open framework question above.

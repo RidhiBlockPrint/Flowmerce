@@ -15,10 +15,11 @@ SEO module:
 
 | Symptom | Likely cause | What to do |
 |---|---|---|
-| Sign-in password unknown | Admin password is generated into `data/initial-admin.txt` on first start | Read that file, or create a user: `python -m flowmerce.modules.seo.cli --email you@example.com --name "You" --role admin`. |
+| Asked for a sign-in or password | There is none: Flowmerce runs in local operator mode ([ADR 0005](../decisions/0005-local-operator-mode.md)) | Open http://127.0.0.1:3000 on this computer. A 403 `local_only` means the request came from another computer. |
 | Fresh empty dashboard, no users or articles | The module reads `data/` under the repository root (or `FLOWMERCE_ROOT` / `DATA_DIR`), and that folder is missing or empty | Restore `data/blog-ops.sqlite` from `backups/` or your own backup (see setup.md). |
 | Integrations show "pending setup" | `.env` not in the repository root | Move/copy `.env` to the root; restart. |
-| Browser shows API only / UI missing | `frontend/web/dist` missing and Node not installed | Install Node.js, then build the UI (see setup.md). |
+| "Port 8787 / 3000 is already in use" or the page shows a connection error | An earlier Flowmerce window, or an old API process, is still running | Close it (Ctrl+C in its window) and run `python scripts\run_flowmerce.py` again. |
+| "Node.js and npm are required" or the frontend build fails | Node.js is not installed, or packages did not install | Install Node.js LTS, then run `npm install` and `npm run build` in `frontend\`. |
 | `ModuleNotFoundError: fastapi` | `seo` extra not installed | `pip install -e ".[dev,seo]"`. |
 | npm install fails on TLS | Office network blocks the default registry | `frontend/.npmrc` points to registry.yarnpkg.com; delete that line on other networks. |
 | Other issues | | The original troubleshooting notes are in `docs/architecture/legacy-blog-ops-README.md`. |

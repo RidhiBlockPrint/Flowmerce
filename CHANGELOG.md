@@ -2,6 +2,43 @@
 
 Format: newest first. Types: Added, Changed, Fixed, Removed, Architecture.
 
+## 2026-10-29 (Next.js JavaScript frontend, one launcher)
+
+### Changed
+- **Frontend migrated from Vite + React Router + TypeScript to Next.js 15 (App Router) + React 19 in JavaScript/JSX only** ([ADR 0006](docs/decisions/0006-nextjs-javascript-frontend.md)). All 33 files under `frontend/web/src` were converted to `.js`/`.jsx` under `frontend/src` (`pages/` became `views/` so it cannot clash with Next.js's Pages Router) and routing moved to real route folders in `frontend/src/app/` (`blogs/[id]`, `workspace/[brand]`, ...). `frontend/web/` (including `index.html`, `tsconfig.json`, `dist/`), `vite.config.ts`, `main.tsx` and `App.tsx` were removed; `package.json` now depends on `next`, `react` and `react-dom` only, with scripts bound to `127.0.0.1`.
+- `frontend/next.config.mjs` forwards `/api/*` to `http://127.0.0.1:8787`, redirects `/login` to Home and adds basic security headers. `components/Providers.jsx` loads the local operator (`/api/auth/me`) and opens the dashboard directly.
+- **Only working pages are visible.** The sidebar and Home list Home and the SEO & Blog pages. Planned projects, shared "planned" pages, future-scope entries and Home's demonstration-data mode were removed from the UI; unknown addresses (including `/users`, `/shipping`, `/approvals`) show a not-found page with a link to Home. `Login`, `Planned` and `Users` sources are kept but not mounted. No database rows were touched.
+- `modules/seo/app.py` no longer serves `frontend/web/dist` (API only; strict `default-src 'none'` CSP on its responses).
+- `scripts/run_flowmerce.py` (new) starts the API on 127.0.0.1:8787 and Next.js on 127.0.0.1:3000, opens the browser and stops both on Ctrl+C, with clear errors for missing Node/npm, failed installs and busy ports. `scripts/run_seo.py` forwards to it; `run_seo.bat` calls the new launcher.
+- `scripts/ci_smoke.py` rewritten for local operator mode (no sign-in; `--web` also starts the built frontend and checks its routes). `.github/workflows/ci.yml`: the frontend job runs `npm ci` and `npm run build` (no type-check); the smoke job builds the frontend and runs `ci_smoke.py --web`. `.gitignore`: `frontend/.next/`, `frontend/out/`.
+- Documentation: `PROJECT_RULES.md` (Python backend, Next.js/JavaScript frontend), README, setup, roadmap, system overview, folder structure, file registry, CI and troubleshooting guides, ADR 0002 note, ADR 0005 update and new ADR 0006.
+
+### Added
+- `tests/unit/test_frontend_javascript_only.py`: fails if TypeScript or Vite files or dependencies return, if the App Router routes are missing, or if unfinished pages are mounted.
+
+### Validation
+- `pytest -q`: 75 passed. `ruff check .` and `mypy`: pass. `npm run build` (Next.js 15.5.28): succeeded. `python scripts/ci_smoke.py --web`: all 35 checks passed (run on port 8799). A browser check on an isolated instance confirmed `/login` lands on Home with no sign-in, Home shows real empty records and the sidebar lists only working pages.
+- **Not verified:** a full `run_flowmerce.py` start on ports 8787/3000 (an older API process, not started by this work, occupied 8787 and was left running; only the "port in use" error path was exercised), the GitHub CI run, a connection from another computer, and anything against the real database or live services.
+
+### Not done
+- No frontend unit tests or linting; Next.js 16 not adopted; `.env.example` may still mention the ignored `ADMIN_PASSWORD`; the `Host`-header check against DNS rebinding (F14).
+
+## 2026-10-29 (local operator mode)
+
+### Changed
+- **No sign-in; local computer only** ([ADR 0005](docs/decisions/0005-local-operator-mode.md)). The dashboard opens without an email, password or session. `modules/seo/app.py` refuses every request that does not come from a loopback address (403 `local_only`) before serving the dashboard, its assets or any API path; missing or unparsable addresses fail closed and forwarded-IP headers are ignored. The only exemption is `POST /api/hooks/workflow`, which keeps its own `X-Workflow-Secret` check. The CSRF header, permission checks, audit log and live-publishing safeguards are unchanged.
+- Local requests act as the first active administrator record (`auth.local_operator`). `GET /api/auth/me` returns it with its permissions; `POST /api/auth/login` and `/api/auth/password` answer 410 and verify nothing; `/api/auth/logout` is harmless.
+- First-run bootstrap creates an administrator record if no active administrator exists, even when other users exist, and never generates, shows, logs or writes a password (`ADMIN_PASSWORD` is ignored; an old `data/initial-admin.txt` is left in place and unused).
+- Frontend: `App.tsx` loads the operator and opens the dashboard directly (`/login` redirects to Home); `Shell.tsx` shows a "Local operator mode" indicator instead of the account menu, password change and sign-out; `Users.tsx` is a read-only list with a note.
+- Tests: `tests/integration/seo/test_http.py` rewritten and `test_home.py` updated for loopback and remote clients; `tests/fixtures/seo.py` gained client helpers.
+
+### Validation
+- 70 Python tests pass (34 before), `ruff check .` and mypy pass, `npm run typecheck` exit 0, `npm run build` succeeded. A browser check on an isolated test instance confirmed the dashboard opens directly, `/login` redirects, the controls are gone and the existing SEO pages load.
+- **Failing / not verified:** `scripts/ci_smoke.py` now fails (it signs in with the old first-run password), so the CI `Smoke test` job would fail if pushed; a connection from another computer over a real network was not tried; nothing was run against the real database.
+
+### Not done
+- `scripts/ci_smoke.py`, `docs/operations/ci-cd.md`, `docs/operations/troubleshooting.md` and `.env.example` still describe sign-in (outside the approved files). `Login.tsx` is unused but kept. A `Host`-header check against DNS rebinding was not added.
+
 ## 2026-10-29 (CI, Stage A)
 
 ### Added

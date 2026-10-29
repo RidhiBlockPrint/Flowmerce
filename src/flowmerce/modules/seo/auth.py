@@ -1,11 +1,22 @@
-"""Sessions: a random token in an HttpOnly, SameSite=Strict cookie; the database keeps only its SHA-256.
-Passwords are scrypt hashes (same format as the earlier build). Mutating requests must carry the
-X-Requested-With header, which a cross-site form cannot set — that is the CSRF guard."""
+"""Local operator mode: who is calling, and whether the call may be answered at all.
+
+Flowmerce runs on the owner's own computer. There is no sign-in: a request from a loopback address acts as
+the local administrator record (`local_operator`), and a request from anywhere else is refused before any
+page or API is served (the loopback check lives in app.py's guard). The one exception is the secret-protected
+workflow webhook, which carries its own authorization.
+
+Mutating requests must still carry the X-Requested-With header, which a cross-site form cannot set — that
+is the CSRF guard (also in app.py).
+
+The password and session helpers below (scrypt hashing, cookie sessions, throttling) are kept for
+compatibility but no endpoint uses them for access control any more. Existing user, password and session
+records are never modified or deleted by this mode."""
 from __future__ import annotations
 
 import base64
 import hashlib
 import hmac
+import ipaddress
 import secrets
 import time
 from datetime import datetime, timedelta, timezone
@@ -70,10 +81,43 @@ def load_user(request: Request) -> dict | None:
     return row
 
 
+# Stored in users.password_hash for a record created by local operator mode. It has no password behind it:
+# verify_password() only accepts four "$"-separated scrypt parts, so this value can never match anything.
+LOCAL_OPERATOR_PASSWORD_HASH = "disabled$local-operator"
+
+
+def is_loopback_client(request: Request) -> bool:
+    """True only when the connecting address is a loopback address (127.0.0.0/8 or ::1).
+
+    Fails closed: a missing or unparsable address is not local. Forwarded-IP headers (X-Forwarded-For and
+    friends) are never read here; only the address of the connection the server accepted is used. (uvicorn
+    itself applies X-Forwarded-For only when the connection comes from 127.0.0.1, so a remote client cannot
+    use it to look local.)
+    """
+    client = request.client
+    if client is None or not client.host:
+        return False
+    try:
+        ip = ipaddress.ip_address(client.host)
+    except ValueError:
+        return False
+    if isinstance(ip, ipaddress.IPv6Address) and ip.ipv4_mapped is not None:
+        ip = ip.ipv4_mapped
+    return ip.is_loopback
+
+
+def local_operator() -> dict | None:
+    """The administrator record every local request acts as (for permissions and audit attribution).
+
+    The first active administrator by id; None if the database has none (the server creates one at startup).
+    """
+    return get("SELECT id, email, name, role FROM users WHERE role = 'admin' AND active = 1 ORDER BY id LIMIT 1")
+
+
 def require_user(request: Request) -> dict:
     u = getattr(request.state, "user", None)
     if not u:
-        raise HttpError(401, "Sign in to continue.", "unauthenticated")
+        raise HttpError(503, "No administrator record exists yet. Restart the server so it can create one.", "no_operator")
     return u
 
 

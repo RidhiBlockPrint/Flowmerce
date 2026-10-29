@@ -85,50 +85,31 @@ def ip(request: Request) -> str | None:
 # ---------------- auth ----------------
 
 @api.post("/auth/login")
-def login(request: Request, response: Response, body: dict = JSONBody):
-    email = s(body.get("email"), 200).strip().lower()
-    password = s(body.get("password"), 500)
-    key = f"{email}|{ip(request)}"
-    auth.login_throttle(key)
-    u = get("SELECT * FROM users WHERE email = ? AND active = 1", email)
-    if not u or not auth.verify_password(password, u["password_hash"]):
-        auth.login_failed(key)
-        audit(None, "auth.login_failed", summary=email, ip=ip(request))
-        raise HttpError(401, "Email or password is incorrect.")
-    auth.login_succeeded(key)
-    auth.create_session(response, u["id"])
-    run("UPDATE users SET last_login_at = ? WHERE id = ?", now(), u["id"])
-    audit({"id": u["id"], "email": u["email"]}, "auth.login", ip=ip(request))
-    return {"ok": True}
+def login(body: dict = JSONBody):
+    """Obsolete in local operator mode: nothing is verified, no session is created, no user record is read."""
+    raise HttpError(410, "Sign-in is turned off: Flowmerce runs in local operator mode on this computer.", "login_disabled")
 
 
 @api.post("/auth/logout")
-def logout(request: Request, response: Response):
-    if getattr(request.state, "user", None):
-        audit(request.state.user, "auth.logout", ip=ip(request))
-    auth.destroy_session(request, response)
+def logout(response: Response):
+    """Harmless: there is no session to end. It only clears a leftover cookie from before local operator
+    mode; no session record is deleted and nothing is written to the audit log."""
+    response.delete_cookie(auth.COOKIE, path="/", httponly=True, samesite="strict", secure=config.cookie_secure)
     return {"ok": True}
 
 
 @api.get("/auth/me")
 def me(request: Request):
+    """The local operator: the administrator record every local request acts as, with its permissions."""
     u = auth.require_user(request)
     return {"user": {**u, "roleLabel": ROLE_LABELS[u["role"]]}, "permissions": perms_for(u["role"]), "brands": all_brands(),
-            "livePublishing": config.allow_live_publish, "demoLoaded": demo_loaded()}
+            "livePublishing": config.allow_live_publish, "demoLoaded": demo_loaded(), "localOperator": True}
 
 
 @api.post("/auth/password")
-def change_password(request: Request, body: dict = JSONBody):
-    u = auth.require_user(request)
-    row = get("SELECT password_hash FROM users WHERE id = ?", u["id"])
-    if not auth.verify_password(s(body.get("current"), 500), row["password_hash"]):
-        raise HttpError(400, "Current password is incorrect.")
-    err = auth.validate_password(body.get("next"))
-    if err:
-        raise HttpError(400, err)
-    run("UPDATE users SET password_hash = ? WHERE id = ?", auth.hash_password(body["next"]), u["id"])
-    audit(u, "auth.password_change")
-    return {"ok": True}
+def change_password(body: dict = JSONBody):
+    """Obsolete in local operator mode: passwords no longer protect anything, so none is verified or changed."""
+    raise HttpError(410, "Password changes are turned off: Flowmerce runs in local operator mode on this computer.", "password_disabled")
 
 
 # ---------------- brands ----------------

@@ -2,23 +2,15 @@
   "name": "flowmerce-web",
   "version": "1.0.0",
   "private": true,
-  "description": "React UI for Flowmerce. Build it with npm run build; web/dist is git-ignored and is served by the Python backend.",
-  "type": "module",
+  "description": "Next.js (React, JavaScript/JSX) frontend for Flowmerce. It listens on 127.0.0.1 only and forwards /api/* to the Python backend.",
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "typecheck": "tsc -p web/tsconfig.json --noEmit"
+    "dev": "next dev -H 127.0.0.1 -p 3000",
+    "build": "next build",
+    "start": "next start -H 127.0.0.1 -p 3000"
   },
   "dependencies": {
+    "next": "^15.5.0",
     "react": "^19.1.0",
-    "react-dom": "^19.1.0",
-    "react-router-dom": "^7.9.0"
-  },
-  "devDependencies": {
-    "@types/react": "^19.1.0",
-    "@types/react-dom": "^19.1.0",
-    "@vitejs/plugin-react": "^5.0.0",
-    "typescript": "^5.9.0",
-    "vite": "^7.1.0"
+    "react-dom": "^19.1.0"
   }
 }

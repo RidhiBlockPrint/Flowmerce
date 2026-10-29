@@ -15,15 +15,19 @@ Flowmerce/
 │           ├── api.py app.py main.py cli.py config.py db.py auth.py permissions.py audit.py util.py
 │           ├── services/     business logic (articles, publishing, workflow, sync, analytics, excel, ...)
 │           └── integrations/ Shopify, Google (GSC+GA4), Claude clients and integration status
-├── frontend/                 React/TypeScript UI (approved exception, ADR 0002): shared shell, Home dashboard, SEO pages
-│   └── web/src/              pages/ (Home, Planned, SEO pages), components/ (Shell, home, ui), lib/ (routes registry, home data, api)
-│   ├── package.json  package-lock.json  vite.config.ts  .npmrc
-│   └── web/                  src/, public/, index.html, tsconfig.json, dist/ (built copy served by the backend)
+├── frontend/                 Next.js + React UI, JavaScript/JSX only (ADR 0006). Listens on 127.0.0.1:3000
+│   ├── package.json  package-lock.json  next.config.mjs  jsconfig.json
+│   ├── public/               static files (favicon)
+│   └── src/
+│       ├── app/              App Router: layout.jsx, page.jsx (Home), not-found.jsx, one folder per route, globals.css
+│       ├── views/            page implementations (Home, Overview, Blogs, ArticleEditor, ...; Login/Planned/Users are not mounted)
+│       ├── components/       Providers, Shell, ui, overlays, charts, home, metrics, publish, Icon
+│       └── lib/              api (calls /api/...), app (context), nav (Next.js routing helpers), routes (navigation), home, format, ...
 ├── tests/
 │   ├── unit/  (+ seo/)       isolated logic tests
 │   ├── integration/ (+ seo/) process / HTTP interaction tests
 │   └── fixtures/seo.py       shared fixtures for the seo suites
-├── scripts/                  run_seo.py (launcher), run_seo.bat (Windows double-click wrapper)
+├── scripts/                  run_flowmerce.py (one-command launcher), run_seo.py / run_seo.bat (compatible entry points), ci_smoke.py
 ├── docs/
 │   ├── architecture/  development/  operations/  decisions/
 │   ├── FILE_REGISTRY.md
@@ -42,7 +46,7 @@ Flowmerce/
 |---|---|
 | A business feature (ads, seo, ship, ...) | `src/flowmerce/modules/<module>/` with tests in `tests/unit/<module>/` |
 | A connection to Shopify, Meta, etc. | `src/flowmerce/integrations/<platform>/` for new platforms (create when needed); SEO-specific clients currently live in `modules/seo/integrations/` |
-| UI code | `frontend/` (TypeScript/React only, see ADR 0002). A new page goes in `web/src/pages/`, its entry in `web/src/lib/routes.ts`, and reusable parts in `web/src/components/` |
+| UI code | `frontend/` (JavaScript/JSX only, no TypeScript; ADR 0006). A new page: implementation in `src/views/`, a route folder with `page.jsx` in `src/app/`, its entry in `src/lib/routes.js` (only when it works), reusable parts in `src/components/` |
 | Settings or new environment variables | `src/flowmerce/config/`, plus `.env.example` and setup docs |
 | Logging, error types, base services | `src/flowmerce/core/` |
 | Code used by 2+ modules | `src/flowmerce/shared/` (create when the second user appears) |

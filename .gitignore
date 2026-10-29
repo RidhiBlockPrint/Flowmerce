@@ -20,6 +20,8 @@ secrets/
 data/
 backups/
 frontend/node_modules/
+frontend/.next/
+frontend/out/
 logs/*
 !logs/.gitkeep
 *.log

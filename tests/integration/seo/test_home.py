@@ -2,32 +2,26 @@
 
 Runs against the shared in-memory database from tests/fixtures/seo.py with the network blocked. Each test
 seeds its own rows through a fixture that deletes them afterwards, so nothing leaks into other tests.
+
+Local operator mode: there is no sign-in, and a local request acts as the administrator, so these tests
+use a loopback client (local_client) and never pretend a particular manager or reviewer is signed in.
 """
 import json
 
 import pytest
-from fastapi.testclient import TestClient
 
 from flowmerce.modules.seo import permissions
 from flowmerce.modules.seo.app import create_app
 from flowmerce.modules.seo.db import all_rows, now, run
 from flowmerce.modules.seo.services.home import REPORTS_NOTE, metric_window
-from tests.fixtures.seo import PASSWORD
+from tests.fixtures.seo import local_client, remote_client
 
-H = {"X-Requested-With": "blog-ops"}
 SECRET_MARKERS = ("shpat_", "private_key", "sk-ant", "password_hash", "admin_token", "ANTHROPIC_API_KEY")
 
 
 @pytest.fixture(scope="module")
 def app():
     return create_app()
-
-
-def login(app, email):
-    c = TestClient(app)
-    r = c.post("/api/auth/login", json={"email": email, "password": PASSWORD}, headers=H)
-    assert r.status_code == 200, r.text
-    return c
 
 
 def _article(brand, handle, status, ts):
@@ -88,30 +82,29 @@ def _table_counts():
     return {n: all_rows(f"SELECT COUNT(*) n FROM {n}")[0]["n"] for n in names}
 
 
-def test_unauthenticated_refused(app):
-    assert TestClient(app).get("/api/home").status_code == 401
+def test_local_operator_needs_no_login_and_other_computers_are_refused(app):
+    assert local_client(app).get("/api/home").status_code == 200
+    r = remote_client(app).get("/api/home")
+    assert r.status_code == 403 and r.json()["code"] == "local_only"
 
 
-def test_view_permission_required(app, monkeypatch):
-    r = login(app, "reviewer@test.local")
-    assert r.get("/api/home").status_code == 200
-    monkeypatch.setitem(permissions.ROLE_PERMS, "reviewer", ["audit:view"])
-    assert r.get("/api/home").status_code == 403
+def test_view_permission_is_still_checked_for_the_administrator(app, monkeypatch):
+    c = local_client(app)
+    assert c.get("/api/home").status_code == 200
+    monkeypatch.setitem(permissions.ROLE_PERMS, "admin", ["audit:view"])   # the local operator's role
+    assert c.get("/api/home").status_code == 403
 
 
-def test_approvals_filtered_by_role(app, approvals_seed):
-    def kinds(email):
-        body = login(app, email).get("/api/home").json()
-        assert body["approvalsTotal"] == len(body["approvals"])
-        return {a["kind"] for a in body["approvals"] if a["title"].startswith("Home test")}
-
-    assert kinds("manager@test.local") == {"topic"}            # topic:decide only
-    assert kinds("reviewer@test.local") == {"review"}          # may not authorize their own publish request
-    assert kinds("admin@test.local") == {"topic", "review", "authorize"}
+def test_operator_sees_every_kind_of_approval(app, approvals_seed):
+    body = local_client(app).get("/api/home").json()
+    assert body["approvalsTotal"] == len(body["approvals"])
+    mine = {a["kind"] for a in body["approvals"] if a["title"].startswith("Home test")}
+    # An administrator can decide topics, review content and authorize publishing (even a request raised by someone else).
+    assert mine == {"topic", "review", "authorize"}
 
 
 def test_approvals_carry_links_not_actions(app, approvals_seed):
-    body = login(app, "admin@test.local").get("/api/home").json()
+    body = local_client(app).get("/api/home").json()
     mine = [a for a in body["approvals"] if a["title"].startswith("Home test")]
     assert mine and all(a["to"].startswith("/") for a in mine)
     # Home only links to the SEO pages where deciding is permission-checked and audited; it carries no action endpoints.
@@ -119,7 +112,7 @@ def test_approvals_carry_links_not_actions(app, approvals_seed):
 
 
 def test_brand_filter(app, approvals_seed, analytics_seed):
-    a = login(app, "admin@test.local")
+    a = local_client(app)
     cpc = a.get("/api/home?brand=cpc").json()
     assert cpc["brands"] == ["cpc"]
     assert {m["brand"] for m in cpc["metrics"]} == {"cpc"}
@@ -130,7 +123,7 @@ def test_brand_filter(app, approvals_seed, analytics_seed):
 
 
 def test_unavailable_sources_are_empty_not_zero(app):
-    body = login(app, "admin@test.local").get("/api/home").json()
+    body = local_client(app).get("/api/home").json()
     for m in body["metrics"]:
         assert m["value"] is None and m["withheld"] is False
         assert m["source"]["kind"] is None
@@ -139,7 +132,7 @@ def test_unavailable_sources_are_empty_not_zero(app):
 
 
 def test_window_and_real_values(app, analytics_seed):
-    body = login(app, "admin@test.local").get("/api/home").json()
+    body = local_client(app).get("/api/home").json()
     assert body["window"]["from"] == analytics_seed["from"] and body["window"]["to"] == analytics_seed["to"]
     m = _metrics(body, "ridhi")
     assert m["gsc_clicks"]["value"] == 15 and m["gsc_impressions"]["value"] == 150 and m["ga4_sessions"]["value"] == 40
@@ -147,7 +140,7 @@ def test_window_and_real_values(app, analytics_seed):
 
 
 def test_demo_fixtures_never_appear_as_metrics(app, analytics_seed):
-    r = login(app, "admin@test.local").get("/api/home")
+    r = local_client(app).get("/api/home")
     body = r.json()
     cpc = _metrics(body, "cpc")
     assert all(x["value"] is None and x["withheld"] is True and x["source"]["kind"] == "demo" for x in cpc.values())
@@ -164,7 +157,7 @@ def test_jobs_and_syncs_are_real_records_only(app):
     run("INSERT OR REPLACE INTO integration_status (key, brand_id, status, last_attempt_at, last_error) VALUES ('ga4','ridhi','error',?,'secret-looking detail')", ts)
     run("INSERT OR REPLACE INTO integration_status (key, brand_id, status) VALUES ('shopify','ridhi','pending_setup')")
     try:
-        r = login(app, "admin@test.local").get("/api/home?brand=ridhi")
+        r = local_client(app).get("/api/home?brand=ridhi")
         body = r.json()
         jobs = {j["name"]: j for j in body["jobs"]}
         assert jobs["Performance tracking"]["status"] == "succeeded" and jobs["Performance tracking"]["lastSuccessAt"] == ts
@@ -180,14 +173,14 @@ def test_jobs_and_syncs_are_real_records_only(app):
 
 
 def test_no_credentials_or_setup_text_in_response(app, approvals_seed, analytics_seed):
-    text = login(app, "admin@test.local").get("/api/home").text
+    text = local_client(app).get("/api/home").text
     for marker in SECRET_MARKERS:
         assert marker not in text
     assert "setup" not in json.loads(text) and "configured" not in text
 
 
 def test_endpoint_does_not_mutate_data(app, approvals_seed, analytics_seed):
-    c = login(app, "admin@test.local")
+    c = local_client(app)
     before = _table_counts()
     assert c.get("/api/home").status_code == 200
     assert c.get("/api/home?brand=ridhi").status_code == 200

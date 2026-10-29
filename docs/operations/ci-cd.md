@@ -11,8 +11,8 @@ Workflow: `.github/workflows/ci.yml`. It runs on every push to `main` and on eve
 | Job (check name) | What it does | Fails when |
 |---|---|---|
 | `Python 3.12` and `Python 3.14` | `pip install -e ".[dev,seo]"`, then `ruff check .`, `mypy` (strict) and `pytest -q` | any of the three fails on that Python version |
-| `Frontend` | Node 24, `npm ci`, `npm run typecheck`, `npm run build`; saves the built UI as the `frontend-dist` artifact (kept 7 days) | the lockfile is out of sync, the type check or the build fails |
-| `Smoke test` (after `Frontend`) | `python scripts/ci_smoke.py --dist frontend/web/dist` on Python 3.12: boots the real app on a throwaway folder and probes it | the app does not start, `/login` is not served, `/api/home` is reachable without sign-in, or its response is wrong |
+| `Frontend` | Node 24, `npm ci`, `npm run build` (Next.js build; there is no TypeScript step) | the lockfile is out of sync or the build fails |
+| `Smoke test` | Builds the frontend, then `python scripts/ci_smoke.py --web` on Python 3.12: boots the API and the built Next.js frontend on a throwaway folder and probes both | the app does not start, the operator context or `/api/home` is wrong, login is not disabled, CSRF is not enforced, a working route does not render, or an unbuilt route is not a not-found page |
 
 `.github/dependabot.yml` opens weekly update pull requests for the Python packages, the frontend packages and the GitHub Actions themselves. Nothing merges automatically.
 
@@ -25,13 +25,12 @@ From the repository root, in the project's virtual environment (Windows PowerShe
 .venv\Scripts\python.exe -m mypy
 .venv\Scripts\python.exe -m pytest -q
 cd frontend
-npm run typecheck
 npm run build
 cd ..
-.venv\Scripts\python.exe scripts\ci_smoke.py --dist frontend\web\dist
+.venv\Scripts\python.exe scripts\ci_smoke.py --web
 ```
 
-`scripts/ci_smoke.py` is safe to run any time: it uses a fresh temporary folder (never your `.env` or `data/`), turns the scheduler and live publishing off, binds to `127.0.0.1` and deletes the folder afterwards. Without `--dist` it skips the check that the built UI is served.
+`scripts/ci_smoke.py` is safe to run any time: it uses a fresh temporary folder (never your `.env` or `data/`), turns the scheduler and live publishing off, binds to `127.0.0.1` and deletes the folder afterwards. Without `--web` it checks only the API. With `--web` the API uses port 8787, so stop a running Flowmerce first.
 
 ## One-time GitHub settings (only the repository owner can do these)
 
