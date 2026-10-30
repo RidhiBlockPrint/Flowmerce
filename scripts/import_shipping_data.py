@@ -32,6 +32,11 @@ def main() -> int:
         help="read shipments, sync runs, order checks and manual status from Supabase (SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY in .env)",
     )
     ap.add_argument(
+        "--prune",
+        action="store_true",
+        help="with --from-supabase: also remove local shipments Supabase no longer has",
+    )
+    ap.add_argument(
         "--dry-run", action="store_true", help="report what would change; write nothing"
     )
     args = ap.parse_args()
@@ -42,7 +47,7 @@ def main() -> int:
     open_db()
     reports = []
     if args.from_supabase:
-        reports.append(importer.import_from_supabase(args.dry_run))
+        reports.append(importer.import_from_supabase(args.dry_run, prune=args.prune))
         print(json.dumps(reports, indent=2, default=str))
         return 0 if reports[0].get("verified", True) else 1
     src = args.file or importer.default_shipments_file()

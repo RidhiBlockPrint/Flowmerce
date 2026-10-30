@@ -190,9 +190,10 @@ def _supabase_get(base: str, key: str, table: str, order: str, opener=None) -> l
         offset += 1000
 
 
-def import_from_supabase(dry_run: bool = False, opener=None) -> dict:
+def import_from_supabase(dry_run: bool = False, opener=None, prune: bool = False) -> dict:
     """Copy the live tracker data (shipments, sync runs, order checks, manual status) from Supabase into Flowmerce.
-    Needs SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY in .env. Read-only against Supabase; idempotent here."""
+    Needs SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY in .env. Read-only against Supabase; idempotent here.
+    prune=True also removes local shipments that Supabase no longer has (after the backup), so Flowmerce mirrors it."""
     url, key = env("SUPABASE_URL"), env("SUPABASE_SERVICE_ROLE_KEY")
     if not (url and key):
         raise RuntimeError("SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are not set in .env.")
@@ -215,6 +216,7 @@ def import_from_supabase(dry_run: bool = False, opener=None) -> dict:
         "order_checks": len(checks),
         "manual_status": len(good_manual),
         "problems": problems,
+        "stale_local_rows": sum(1 for k in existing if k not in {row_key(r) for r in rows}),
     }
     if dry_run:
         return report
@@ -235,6 +237,8 @@ def import_from_supabase(dry_run: bool = False, opener=None) -> dict:
             m["status"],
             str(m.get("updated_by") or "imported"),
         )
+    if prune:
+        report["pruned"] = repo.delete_shipments_not_in({row_key(r) for r in rows})
     stored = repo.load_shipments()
     missing = [k for k in (row_key(r) for r in rows) if k not in stored]
     report.update(

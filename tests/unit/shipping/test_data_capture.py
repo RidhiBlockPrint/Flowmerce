@@ -234,3 +234,47 @@ def test_alert_digest_matches_the_dashboard_rules_and_never_emails_without_smtp(
         "#1"
     ] and stuck == []  # Amazon is never counted as critical
     assert alerts.run_alerts(records, now=NOW, env={}).startswith("alert skipped")
+
+
+def test_prune_removes_only_rows_supabase_no_longer_has(monkeypatch):
+    monkeypatch.setattr(
+        importer,
+        "env",
+        lambda k, d="": {
+            "SUPABASE_URL": "https://x.supabase.co",
+            "SUPABASE_SERVICE_ROLE_KEY": "sb_secret_test",
+        }.get(k, d),
+    )
+    monkeypatch.setattr(importer, "backup_database", lambda: "memory")
+    base = {f: None for f in repo.SHIPMENT_FIELDS}
+    repo.save_shipments(
+        [
+            base
+            | {
+                "shopify_order_id": "gid://old",
+                "order_number": "#old",
+                "fulfillment_id": "fold",
+                "tracking_number": "OLD",
+            }
+        ]
+    )
+    live = base | {
+        "shopify_order_id": "gid://1",
+        "order_number": "#1",
+        "fulfillment_id": "f1",
+        "tracking_number": "T1",
+        "order_created_at": "2026-10-20T00:00:00+00:00",
+    }
+    opener, _ = fake_supabase(
+        {"shipments": [live], "sync_runs": [], "order_checks": [], "manual_status": []}
+    )
+    dry = importer.import_from_supabase(dry_run=True, opener=opener, prune=True)
+    assert (
+        dry["stale_local_rows"] == 1 and len(repo.load_shipments()) == 1
+    )  # a dry run deletes nothing
+    keep = importer.import_from_supabase(opener=opener)
+    assert (
+        len(repo.load_shipments()) == 2 and "pruned" not in keep
+    )  # without --prune nothing is removed
+    done = importer.import_from_supabase(opener=opener, prune=True)
+    assert done["pruned"] == 1 and set(repo.load_shipments()) == {"f1|T1"}

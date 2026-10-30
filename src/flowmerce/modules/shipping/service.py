@@ -483,7 +483,15 @@ def summary(now: datetime | None = None, week_days: int = 0) -> dict:
             {"key": key, "count": k[key]}
             for key in ("red", "orange", "yellow", "grey", "on_track", "no_scan")
         ],
-        "weeks": weeks([r for r in active if not week_days or ((c := _dt(r["order_created_at"])) and c >= now - timedelta(days=week_days))], 10),
+        "weeks": weeks(
+            [
+                r
+                for r in active
+                if not week_days
+                or ((c := _dt(r["order_created_at"])) and c >= now - timedelta(days=week_days))
+            ],
+            10,
+        ),
         "carriers": [
             {
                 "name": c["name"],

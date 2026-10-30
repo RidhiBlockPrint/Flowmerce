@@ -149,6 +149,20 @@ def save_shipments(records: Iterable[dict]) -> tuple[int, int]:
     return created, updated
 
 
+def delete_shipments_not_in(keep: set[str]) -> int:
+    """Delete shipments whose (fulfillment_id|tracking_number) is not in `keep`. Used only by the Supabase mirror import."""
+    ready()
+    stale = [
+        r["id"]
+        for r in all_rows("SELECT id, fulfillment_id, tracking_number FROM shipping_shipments")
+        if row_key(r) not in keep
+    ]
+    with db.tx():
+        for i in stale:
+            run("DELETE FROM shipping_shipments WHERE id = ?", i)
+    return len(stale)
+
+
 # ---------------- sync runs ----------------
 def record_run(run_row: dict) -> int:
     ready()
