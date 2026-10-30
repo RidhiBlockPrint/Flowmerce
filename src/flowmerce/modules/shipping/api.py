@@ -15,7 +15,7 @@ from . import repo, service
 from .alerts import run_alerts
 from .config import load_config
 from .schema import schema_version, table_counts
-from .sync import recheck_missing, sync_now
+from .sync import sync_now
 
 shipping = APIRouter(prefix="/api/shipping")
 JSONBody = Body(default_factory=dict)
@@ -77,7 +77,6 @@ def status(request: Request):
         "counts": table_counts(),
         "thresholds": cfg.thresholds,
         "readOnlyShopify": True,
-        "supersededRows": service.superseded_count(),
     }
 
 
@@ -176,21 +175,6 @@ async def sync(request: Request):
     return result
 
 
-@shipping.post("/issues/recheck")
-async def recheck(request: Request):
-    """Ask Shopify again (read-only) about the orders listed as missing a tracking number."""
-    u = auth.require_perm(request, "analytics:sync")
-    result = await run_in_threadpool(recheck_missing)
-    audit(
-        u,
-        "shipping.recheck",
-        "sync",
-        "",
-        summary=f"{result.get('fixed', 0)} of {result.get('requested', 0)} now have tracking",
-    )
-    return result
-
-
 @shipping.get("/export/{kind}")
 def export(kind: str, request: Request):
     auth.require_perm(request, "view")
@@ -212,9 +196,7 @@ async def send_alerts(request: Request):
 
     msg = await run_in_threadpool(
         lambda: run_alerts(
-            service.live_shipments(),
-            thresholds=load_config().thresholds,
-            checks=_repo.order_checks(),
+            _repo.all_shipments(), thresholds=load_config().thresholds, checks=_repo.order_checks()
         )
     )
     audit(u, "shipping.alert", "alert", "", summary=msg[:200])

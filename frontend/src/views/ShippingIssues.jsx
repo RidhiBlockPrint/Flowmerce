@@ -1,11 +1,9 @@
 'use client';
 import { useState } from 'react';
-import { api, useApi } from '../lib/api';
-import { useApp } from '../lib/app';
+import { useApi } from '../lib/api';
 import { fmtDateTime, fmtInt } from '../lib/format';
 import { CATS } from '../lib/shipping';
-import { Button, Card, Empty, ErrorState, LoadingBlock, PageHead, Paged, Pill } from '../components/ui';
-import { useToast } from '../components/overlays';
+import { Card, Empty, ErrorState, LoadingBlock, PageHead, Paged, Pill } from '../components/ui';
 import { CatTag, ExportButton, ShipmentDrawer } from '../components/shipping';
 
 const SECTIONS = [
@@ -18,27 +16,6 @@ const SECTIONS = [
 export default function ShippingIssues() {
     const { data, error, loading, reload } = useApi('/shipping/issues');
     const [open, setOpen] = useState(null);
-    const [busy, setBusy] = useState(false);
-    const { can } = useApp();
-    const toast = useToast();
-    // Ask Shopify again (read-only) about the orders listed as missing a tracking number.
-    const recheck = async () => {
-        setBusy(true);
-        try {
-            const r = await api.post('/shipping/issues/recheck');
-            if (r.sync_status === 'failed')
-                toast.error(new Error(r.error_summary || 'Re-check failed.'));
-            else
-                toast.ok(`Shopify checked ${r.requested} orders: ${r.fixed} now have a tracking number, ${r.still_missing ?? 0} still do not.`);
-            reload();
-        }
-        catch (e) {
-            toast.error(e);
-        }
-        finally {
-            setBusy(false);
-        }
-    };
     return (<>
       <PageHead title="Lost, missing and undeliverable" sub="Kept out of every total, list and chart elsewhere. Open one to mark it, add a note or jump to the Shopify order." actions={<ExportButton kind="issues" label="Export CSV"/>}/>
       <ErrorState error={error} onRetry={reload}/>
@@ -51,7 +28,7 @@ export default function ShippingIssues() {
               </a>))}
           </div>
           {SECTIONS.map((s) => (<div key={s.key} id={s.key}>
-              <Card title={s.title} sub={s.sub} flush actions={<>{s.key === 'missing' && can('analytics:sync') && data.counts.missing ? <Button size="sm" icon="refresh" loading={busy} onClick={recheck} title="Asks Shopify again (read-only) whether these orders now have a tracking number">Re-check in Shopify</Button> : null}<Pill tone={data.counts[s.key] ? 'crit' : 'ok'}>{fmtInt(data.counts[s.key])}</Pill></>}>
+              <Card title={s.title} sub={s.sub} flush actions={<Pill tone={data.counts[s.key] ? 'crit' : 'ok'}>{fmtInt(data.counts[s.key])}</Pill>}>
                 {data[s.key].length ? (<Paged rows={data[s.key]}>{(rows) => (<div className="table-wrap">
                       <table className="t compact">
                         <thead><tr><th>Order</th><th>Carrier</th><th>Tracking</th><th className="r">Days</th><th>Status</th><th className="hide-md">Last update</th></tr></thead>

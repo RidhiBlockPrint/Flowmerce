@@ -110,41 +110,6 @@ def action_text(cat: str, exc: str, stage: str) -> str:
     }.get(cat, "Review manually.")
 
 
-def _drop_superseded(rows: list[dict]) -> list[dict]:
-    """Remove saved rows that Shopify no longer reports, so they cannot show up as phantom shipments.
-
-    Rows are keyed by (fulfillment_id, tracking_number), so when a tracking number is added to a fulfillment later
-    the old row (empty tracking) stays behind next to the new one, and a fulfillment that Shopify replaced or
-    cancelled keeps its old row. Two safe rules, nothing is deleted:
-      1. a row with no tracking number is superseded when another row of the same fulfillment has one;
-      2. every row seen in one sync shares the same last_checked_at, so a row of an order that was checked later
-         than this row was not returned by that later sync (Shopify dropped it)."""
-    tracked_fulfillments = {r["fulfillment_id"] for r in rows if r["tracking_number"]}
-    latest: dict[str, datetime] = {}
-    for r in rows:
-        d = _dt(r["last_checked_at"])
-        if d and (r["order_number"] not in latest or d > latest[r["order_number"]]):
-            latest[r["order_number"]] = d
-    keep = []
-    for r in rows:
-        if not r["tracking_number"] and r["fulfillment_id"] in tracked_fulfillments:
-            continue
-        d = _dt(r["last_checked_at"])
-        if d and (latest[r["order_number"]] - d) > timedelta(minutes=1):
-            continue
-        keep.append(r)
-    return keep
-
-
-def live_shipments() -> list[dict]:
-    """Saved shipments minus the superseded rows (see _drop_superseded)."""
-    return _drop_superseded(repo.all_shipments())
-
-
-def superseded_count() -> int:
-    return len(repo.all_shipments()) - len(live_shipments())
-
-
 def classify(now: datetime | None = None) -> list[dict]:
     """Every saved shipment with its aging category, flags and team marks. Cancelled/refunded orders are dropped."""
     now = now or datetime.now(UTC)
@@ -158,7 +123,7 @@ def classify(now: datetime | None = None) -> list[dict]:
         if c["cancelled"] or str(c["financial_status"]).upper() == "REFUNDED"
     }
     note_map = repo.notes()
-    rows = [r for r in live_shipments() if r["order_number"] not in bad]
+    rows = [r for r in repo.all_shipments() if r["order_number"] not in bad]
     pkgs = Counter(r["order_number"] for r in rows)
     out = []
     for r in rows:

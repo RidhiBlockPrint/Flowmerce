@@ -169,23 +169,12 @@ class ShopifyClient:
 
     def fetch_orders(self, since: str):
         """Yield order nodes created on/after `since` (YYYY-MM-DD), page by page."""
-        yield from self.fetch_orders_matching(ORDER_FILTER.format(since=since))
-
-    def fetch_orders_by_name(self, names, batch: int = 20):
-        """Yield the orders with these names (e.g. "#5582", "# RBP6114"), whatever their status. Read-only."""
-        names = [n for n in dict.fromkeys(names) if n]
-        for i in range(0, len(names), batch):
-            q = " OR ".join('name:"{}"'.format(n.replace('"', "")) for n in names[i : i + batch])
-            yield from self.fetch_orders_matching(q)
-
-    def fetch_orders_matching(self, query: str):
-        """Yield order nodes for a Shopify order search query, page by page."""
         cursor = None
         while True:
             data = self._post(
                 {
                     "query": ORDERS_QUERY,
-                    "variables": {"cursor": cursor, "q": query},
+                    "variables": {"cursor": cursor, "q": ORDER_FILTER.format(since=since)},
                 }
             )
             conn = data["orders"]
