@@ -635,6 +635,30 @@ def analytics(now: datetime | None = None) -> dict:
     }
 
 
+def issues(now: datetime | None = None) -> dict:
+    """Shipments with a problem, in three groups: no tracking number, lost, and could not deliver.
+
+    - missing: not delivered, not covered, no tracking number (nothing can be tracked until one is added in Shopify);
+    - lost: the team marked the package lost;
+    - undeliverable: the team marked it "couldn't deliver", or the carrier reported a failed delivery."""
+    rows = classify(now)
+    live = [r for r in rows if r["cat"] not in ("delivered", "covered")]
+
+    def oldest_first(items: list[dict]) -> list[dict]:
+        return sorted(items, key=lambda r: -(r["days"] or 0))
+
+    lost = [r for r in live if r["cat"] == "lost"]
+    undeliverable = [r for r in live if r["cat"] == "failed" or r["exception"] == "failed_delivery"]
+    taken = {id(r) for r in lost + undeliverable}
+    missing = [r for r in live if r["tracking_missing"] and id(r) not in taken]
+    return {
+        "counts": {"missing": len(missing), "lost": len(lost), "undeliverable": len(undeliverable)},
+        "missing": oldest_first(missing),
+        "lost": oldest_first(lost),
+        "undeliverable": oldest_first(undeliverable),
+    }
+
+
 def checks_page(now: datetime | None = None) -> dict:
     now = now or datetime.now(UTC)
     rows = classify(now)

@@ -77,6 +77,7 @@ export function Shell({ children }) {
               {inShipping ? (<div className="nav-sub" role="group" aria-label="Shipping pages">
                   <NavItem to="/shipping/shipments" icon="inbox">Shipments</NavItem>
                   <NavItem to="/shipping/analytics" icon="analytics">Analytics</NavItem>
+                  <NavItem to="/shipping/issues" icon="alert">Lost &amp; missing</NavItem>
                   <NavItem to="/shipping/checks" icon="checkCircle">Checks</NavItem>
                 </div>) : null}
             </div>

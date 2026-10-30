@@ -142,6 +142,12 @@ def analytics(request: Request):
     return service.analytics()
 
 
+@shipping.get("/issues")
+def issues(request: Request):
+    auth.require_perm(request, "view")
+    return service.issues()
+
+
 @shipping.get("/checks")
 def checks(request: Request):
     auth.require_perm(request, "view")

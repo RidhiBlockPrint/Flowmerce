@@ -243,3 +243,36 @@ def test_package_fulfilled_by_hand_is_covered_when_tracked_packages_are_delivere
 def test_status_filter_offers_only_statuses_that_have_listed_shipments(app):
     statuses = get(app, "/api/shipping/shipments").json()["facets"]["statuses"]
     assert "delivered" not in statuses and "in_transit" in statuses
+
+
+def test_issues_page_groups_missing_lost_and_undeliverable(app):
+    repo.save_shipments(
+        [
+            rec(800, carrier="", ordered=20, fulfilled=15, tracking=""),  # no tracking number
+            rec(
+                801, carrier="Amazon Logistics", ordered=20, fulfilled=15, tracking="TBA801"
+            ),  # will be marked lost
+            rec(
+                802, carrier="Amazon Logistics", ordered=20, fulfilled=15, tracking="TBA802"
+            ),  # will be marked failed
+            rec(
+                803,
+                ordered=20,
+                fulfilled=15,
+                scan=1,
+                status="failed_delivery",
+                exc="failed_delivery",
+            ),  # carrier says failed
+        ]
+    )
+    repo.set_manual_status("#801", "TBA801", "lost", "team")
+    repo.set_manual_status("#802", "TBA802", "failed", "team")
+    d = get(app, "/api/shipping/issues").json()
+    orders = {k: {r["order_number"] for r in d[k]} for k in ("missing", "lost", "undeliverable")}
+    assert "#800" in orders["missing"] and orders["lost"] == {"#801"}
+    assert orders["undeliverable"] == {
+        "#802",
+        "#803",
+        "#7",
+    }  # #7 is the seeded carrier failed delivery
+    assert d["counts"]["lost"] == 1 and "#801" not in orders["missing"]
