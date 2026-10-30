@@ -4,7 +4,7 @@ import { useApi } from '../lib/api';
 import { fmtDateTime, fmtInt } from '../lib/format';
 import { CATS } from '../lib/shipping';
 import { Card, Empty, ErrorState, LoadingBlock, PageHead, Paged, Pill } from '../components/ui';
-import { CatTag, ExportButton, ShipmentDrawer } from '../components/shipping';
+import { CatTag, ShipmentDrawer } from '../components/shipping';
 
 const SECTIONS = [
     { key: 'missing', title: 'Missing tracking', color: '#b42318', sub: 'No tracking number on the Shopify order, so nothing can be tracked. Add one in Shopify; the next sync picks it up.', empty: 'Every open shipment has a tracking number.' },
@@ -17,7 +17,7 @@ export default function ShippingIssues() {
     const { data, error, loading, reload } = useApi('/shipping/issues');
     const [open, setOpen] = useState(null);
     return (<>
-      <PageHead title="Lost, missing and undeliverable" sub="Kept out of every total, list and chart elsewhere. Open one to mark it, add a note or jump to the Shopify order." actions={<ExportButton kind="issues" label="Export CSV"/>}/>
+      <PageHead title="Lost, missing and undeliverable" sub="Shipments that need a decision. Open one to mark it, add a note or jump to the Shopify order."/>
       <ErrorState error={error} onRetry={reload}/>
       {loading && !data ? <LoadingBlock rows={6}/> : null}
       {data ? (<div className="col" style={{ gap: 16 }}>

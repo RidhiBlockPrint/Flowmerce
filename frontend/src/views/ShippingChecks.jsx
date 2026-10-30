@@ -1,11 +1,9 @@
 'use client';
 import { useState } from 'react';
-import Link from 'next/link';
 import { useApi } from '../lib/api';
 import { fmtInt } from '../lib/format';
 import { MCF_LEVEL, MANUAL } from '../lib/shipping';
 import { Card, Empty, ErrorState, LoadingBlock, PageHead, Paged, Pill } from '../components/ui';
-import { Icon } from '../components/Icon';
 import { CatTag, ExportButton, ShipmentDrawer } from '../components/shipping';
 
 const MCF_TONE = { critical: 'crit', watch: 'warn', alert: 'warn' };
@@ -34,13 +32,15 @@ export default function ShippingChecks() {
       <ErrorState error={error} onRetry={reload}/>
       {loading && !data ? <LoadingBlock rows={6}/> : null}
       {data ? (<div className="col" style={{ gap: 16 }}>
-          <div className="callout info"><Icon name="info"/><div>Lost, missing-tracking and could-not-deliver shipments are not counted here or anywhere else in the totals. They are listed on <Link href="/shipping/issues">Lost &amp; missing</Link>.</div></div>
           <Card title="Amazon / unknown carriers to verify" sub="These carriers send no delivery event to Shopify. Open each parcel, check it, and mark the result." flush>
             <div className="kpis" style={{ padding: 16 }}>
               <Tile n={c.total} label="Total to verify" color="#6b4fbb"/>
               <Tile n={c.delivered} label="Delivered (checked)" color="#2d6a3e"/>
+              <Tile n={c.lost} label="Lost (checked)" color="#7a1a12"/>
+              <Tile n={c.failed} label="Could not deliver" color="#b25410"/>
               <Tile n={c.in_transit} label="Still in transit" color="#2f5d8a"/>
               <Tile n={c.unchecked} label="Not checked yet" color="#8b8279"/>
+              <Tile n={c.tracking_missing} label="Tracking missing" color="#b42318"/>
               <Tile n={c.covered} label="Covered (fulfilled by hand)" color="#4a7a8c"/>
             </div>
             {data.unconfirmed.length ? (<Paged rows={data.unconfirmed}>{(rows) => (<div className="table-wrap">

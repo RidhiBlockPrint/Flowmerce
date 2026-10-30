@@ -207,29 +207,7 @@ def classify(now: datetime | None = None) -> list[dict]:
         row["action"] = action_text(final, r["exception"], stage)
         out.append(row)
     _mark_covered(out, checks)
-    _mark_issues(out)
     return out
-
-
-def main_rows(now: datetime | None = None) -> list[dict]:
-    """The shipments that make up every total, list and chart. Lost, missing-tracking and could-not-deliver
-    shipments are kept out of all of them and live on their own page (see issues())."""
-    return [r for r in classify(now) if not r["issue"]]
-
-
-def _mark_issues(rows: list[dict]) -> None:
-    """Tag shipments that belong on the Lost & missing page: lost and could-not-deliver (team marks, or a carrier
-    reported failed delivery) and open shipments that have no tracking number."""
-    for r in rows:
-        r["issue"] = None
-        if r["cat"] in ("delivered", "covered"):
-            continue
-        if r["cat"] == "lost":
-            r["issue"] = "lost"
-        elif r["cat"] == "failed" or r["exception"] == "failed_delivery":
-            r["issue"] = "undeliverable"
-        elif r["tracking_missing"]:
-            r["issue"] = "missing"
 
 
 def _mark_covered(rows: list[dict], checks: dict) -> None:
@@ -335,7 +313,7 @@ def filtered(
     now: datetime | None = None,
 ) -> tuple[list[dict], list[dict]]:
     now = now or datetime.now(UTC)
-    rows = main_rows(now)
+    rows = classify(now)
     return _sort(
         [r for r in rows if _matches(r, view, carrier, status, q.strip(), days, now)], sort
     ), rows
@@ -528,7 +506,7 @@ def checklist(rows: list[dict]) -> dict:
 
 def summary(now: datetime | None = None, week_days: int = 0) -> dict:
     now = now or datetime.now(UTC)
-    rows = main_rows(now)
+    rows = classify(now)
     active = _active(rows)
     k = kpi_counts(rows)
     confirmed = len(active) - k["unconfirmed"]
@@ -574,7 +552,7 @@ def summary(now: datetime | None = None, week_days: int = 0) -> dict:
 
 def analytics(now: datetime | None = None) -> dict:
     now = now or datetime.now(UTC)
-    rows = main_rows(now)
+    rows = classify(now)
     active = _active(rows)
     k = kpi_counts(rows)
     with_days = [r for r in active if r["days"] is not None]
@@ -658,20 +636,32 @@ def analytics(now: datetime | None = None) -> dict:
 
 
 def issues(now: datetime | None = None) -> dict:
-    """The shipments kept out of the main data, in three groups (see _mark_issues):
-    missing (no tracking number), lost, and undeliverable (could not deliver)."""
-    groups: dict[str, list[dict]] = {"missing": [], "lost": [], "undeliverable": []}
-    for r in classify(now):
-        if r["issue"]:
-            groups[r["issue"]].append(r)
-    for g in groups.values():
-        g.sort(key=lambda r: -(r["days"] or 0))
-    return {"counts": {k: len(v) for k, v in groups.items()}, **groups}
+    """Shipments with a problem, in three groups: no tracking number, lost, and could not deliver.
+
+    - missing: not delivered, not covered, no tracking number (nothing can be tracked until one is added in Shopify);
+    - lost: the team marked the package lost;
+    - undeliverable: the team marked it "couldn't deliver", or the carrier reported a failed delivery."""
+    rows = classify(now)
+    live = [r for r in rows if r["cat"] not in ("delivered", "covered")]
+
+    def oldest_first(items: list[dict]) -> list[dict]:
+        return sorted(items, key=lambda r: -(r["days"] or 0))
+
+    lost = [r for r in live if r["cat"] == "lost"]
+    undeliverable = [r for r in live if r["cat"] == "failed" or r["exception"] == "failed_delivery"]
+    taken = {id(r) for r in lost + undeliverable}
+    missing = [r for r in live if r["tracking_missing"] and id(r) not in taken]
+    return {
+        "counts": {"missing": len(missing), "lost": len(lost), "undeliverable": len(undeliverable)},
+        "missing": oldest_first(missing),
+        "lost": oldest_first(lost),
+        "undeliverable": oldest_first(undeliverable),
+    }
 
 
 def checks_page(now: datetime | None = None) -> dict:
     now = now or datetime.now(UTC)
-    rows = main_rows(now)
+    rows = classify(now)
     mcf = mcf_list(now)
     return {
         "mcf": mcf,
@@ -702,7 +692,7 @@ def export_csv(kind: str, **filters: Any) -> tuple[str, str]:
     """(filename, csv text). kind: filtered | escalation | verify."""
     if kind == "escalation":
         rows = sorted(
-            [r for r in main_rows() if r["cat"] == "red" or r["no_move"]],
+            [r for r in classify() if r["cat"] == "red" or r["no_move"]],
             key=lambda r: -(r["days"] or 0),
         )
         head = [
@@ -729,39 +719,9 @@ def export_csv(kind: str, **filters: Any) -> tuple[str, str]:
                 for r in rows
             ],
         )
-    if kind == "issues":
-        data = issues()
-        head = [
-            "section",
-            "order_number",
-            "carrier_name",
-            "tracking_number",
-            "days_in_stage",
-            "status",
-            "shopify_order_url",
-        ]
-        label = {
-            "missing": "Missing tracking",
-            "lost": "Lost",
-            "undeliverable": "Could not deliver",
-        }
-        body = [
-            [
-                label[k],
-                r["order_number"],
-                r["carrier_name"],
-                r["tracking_number"],
-                r["days"],
-                r["cat_label"],
-                r["shopify_url"],
-            ]
-            for k in ("missing", "lost", "undeliverable")
-            for r in data[k]
-        ]
-        return "lost_missing_undeliverable.csv", _csv(head, body)
     if kind == "verify":
         rows = sorted(
-            [r for r in main_rows() if r["cat"] == "unconfirmed"],
+            [r for r in classify() if r["cat"] == "unconfirmed"],
             key=lambda r: (not r["tracking_missing"], -(r["days"] or 0)),
         )
         head = [

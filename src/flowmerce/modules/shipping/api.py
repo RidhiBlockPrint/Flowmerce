@@ -178,7 +178,7 @@ async def sync(request: Request):
 @shipping.get("/export/{kind}")
 def export(kind: str, request: Request):
     auth.require_perm(request, "view")
-    if kind not in ("filtered", "escalation", "verify", "issues"):
+    if kind not in ("filtered", "escalation", "verify"):
         raise HttpError(404, "Unknown export.", "not_found")
     name, text = service.export_csv(kind, **_filters(request))
     return Response(
