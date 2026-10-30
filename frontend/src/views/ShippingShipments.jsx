@@ -14,7 +14,7 @@ const VIEWS = [
     { key: 'nomove', label: 'Stuck (5+ days)' },
     { key: 'noscan', label: 'Scan missing' },
     { key: 'exception', label: 'Exceptions' },
-    { key: 'unconfirmed', label: 'Carrier unconfirmed' },
+    { key: 'unconfirmed', label: 'No carrier / tracking' },
     { key: 'covered', label: 'Fulfilled by hand (covered)' },
 ];
 const KPI_TILES = [
@@ -24,7 +24,7 @@ const KPI_TILES = [
     ['yellow', 'Yellow 4-5 days', 'yellow', CATS.yellow.color],
     ['orange', 'Orange 6-8 days', 'orange', CATS.orange.color],
     ['red', 'Red 9+ days', 'red', CATS.red.color],
-    ['unconfirmed', 'Carrier unconfirmed', 'unconfirmed', CATS.unconfirmed.color],
+    ['unconfirmed', 'No carrier / tracking', 'unconfirmed', CATS.unconfirmed.color],
     ['covered', 'Fulfilled by hand (covered)', 'covered', CATS.covered.color],
     ['exception', 'Carrier exceptions', 'exception', CATS.red.color],
     ['nomove', 'No movement (5+ days)', 'nomove', CATS.orange.color],

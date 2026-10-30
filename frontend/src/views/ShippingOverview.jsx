@@ -58,7 +58,7 @@ export default function ShippingOverview() {
             <section className="card card-body">
               <div className="small muted">Critical shipments</div>
               <div className="hero-num">{fmtInt(k.red)}</div>
-              <div className="hero-sub">of {fmtInt(data.confirmed)} confirmed active shipments · Amazon and unknown carriers are counted separately</div>
+              <div className="hero-sub">of {fmtInt(k.active)} active shipments{k.red_no_delivery_event ? <> · <b>{fmtInt(k.red_no_delivery_event)}</b> of them are Amazon, where Shopify never receives a delivery event: open the tracking page and mark delivered ones in the shipment drawer</> : null}</div>
               <div className="hero-items">
                 <Link className="hero-item" href="/shipping/shipments?view=orange"><b style={{ color: CATS.orange.color }}>{fmtInt(k.orange)}</b><span>Orange · 6–8 days</span></Link>
                 <Link className="hero-item" href="/shipping/shipments?view=yellow"><b style={{ color: CATS.yellow.color }}>{fmtInt(k.yellow)}</b><span>Yellow · 4–5 days</span></Link>
@@ -78,7 +78,7 @@ export default function ShippingOverview() {
             <div className="col" style={{ gap: 12 }}>
               <Link href="/shipping/shipments?view=nomove" className="card card-body stat-card"><div className="small muted">No movement (5+ days)</div><div className="big">{fmtInt(k.nomove)}</div><div className="progress"><i style={{ width: `${pct(k.nomove, k.active)}%`, background: CATS.orange.color }}/></div></Link>
               <Link href="/shipping/shipments?view=exception" className="card card-body stat-card"><div className="small muted">Carrier exceptions</div><div className="big">{fmtInt(k.exception)}</div><div className="progress"><i style={{ width: `${pct(k.exception, k.active)}%`, background: CATS.red.color }}/></div></Link>
-              <Link href="/shipping/shipments?view=unconfirmed" className="card card-body stat-card"><div className="small muted">Carrier unconfirmed (Amazon / unknown)</div><div className="big">{fmtInt(k.unconfirmed)}</div><div className="progress"><i style={{ width: `${pct(k.unconfirmed, k.active)}%`, background: CATS.unconfirmed.color }}/></div></Link>
+              <Link href="/shipping/shipments?view=unconfirmed" className="card card-body stat-card"><div className="small muted">No carrier or tracking number</div><div className="big">{fmtInt(k.unconfirmed)}</div><div className="progress"><i style={{ width: `${pct(k.unconfirmed, k.active)}%`, background: CATS.unconfirmed.color }}/></div></Link>
             </div>
           </div>
 

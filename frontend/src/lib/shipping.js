@@ -6,7 +6,7 @@ export const CATS = {
     grey: { label: 'Grey 2-3 days', short: 'Grey', color: '#8b8279' },
     on_track: { label: 'On track', short: 'On track', color: '#2d6a3e' },
     no_scan: { label: 'No scan data', short: 'No scan', color: '#6b4fbb' },
-    unconfirmed: { label: 'Carrier unconfirmed', short: 'Unconfirmed', color: '#6b4fbb' },
+    unconfirmed: { label: 'No carrier or tracking', short: 'No tracking', color: '#6b4fbb' },
     lost: { label: 'Lost (team confirmed)', short: 'Lost', color: '#7a1a12' },
     failed: { label: 'Could not deliver (team confirmed)', short: 'Failed', color: '#b25410' },
     delivered: { label: 'Delivered', short: 'Delivered', color: '#2f5d8a' },

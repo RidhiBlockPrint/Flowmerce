@@ -90,11 +90,16 @@ def shopify_order_url(r: dict) -> str:
     return f"https://admin.shopify.com/store/{shop}/orders/{oid}" if oid else ""
 
 
-def action_text(cat: str, exc: str, stage: str) -> str:
+def action_text(cat: str, exc: str, stage: str, amazon_like: bool = False) -> str:
     if exc:
         return "Carrier exception: review the reason and decide the next step."
     if stage == "pre_dispatch" and cat != "on_track":
         return "Not dispatched yet. Check packing and dispatch from the location."
+    if amazon_like and cat in ("yellow", "orange", "red"):
+        return (
+            "Delayed according to Shopify. Amazon sends no delivery event, so open the tracking page first: "
+            "if it is delivered, mark it delivered here; if not, escalate."
+        )
     return {
         "on_track": "Continue monitoring.",
         "grey": "Continue monitoring.",
@@ -143,7 +148,11 @@ def classify(now: datetime | None = None) -> list[dict]:
         no_move = (
             cat != "delivered" and not unconf and scan_age is not None and scan_age >= NO_MOVE_DAYS
         )
-        final = "unconfirmed" if (cat != "delivered" and unconf) else cat
+        no_tracking = (not r["tracking_number"]) or str(r["tracking_number"]).startswith("EMPTY")
+        # Amazon (or blank-carrier) shipments that HAVE a tracking number are aged like every other shipment: the
+        # carrier ships them itself, so only a delay makes them a problem. "Unconfirmed" is left for shipments with
+        # no carrier tracking at all. `unconf` (the carrier rule) still unlocks the team check and manual marks.
+        final = "unconfirmed" if (cat != "delivered" and unconf and no_tracking) else cat
         m = manual.get(f"{r['order_number']}|{r['tracking_number']}")
         if m and unconf:
             if m["status"] == "delivered":
@@ -204,7 +213,7 @@ def classify(now: datetime | None = None) -> list[dict]:
             "order_currency": r["order_currency"]
             or (checks.get(r["order_number"]) or {}).get("order_currency", ""),
         }
-        row["action"] = action_text(final, r["exception"], stage)
+        row["action"] = action_text(final, r["exception"], stage, unconf)
         out.append(row)
     _mark_covered(out, checks)
     return out
@@ -369,6 +378,8 @@ def kpi_counts(rows: list[dict]) -> dict:
         "red": c["red"],
         "no_scan": c["no_scan"],
         "unconfirmed": c["unconfirmed"],
+        # critical shipments on Amazon / no-delivery-event carriers: Shopify never says "delivered" for them
+        "red_no_delivery_event": sum(1 for r in active if r["cat"] == "red" and r["unconfirmed"]),
         "exception": sum(1 for r in active if r["exception"]),
         "nomove": sum(1 for r in active if r["no_move"]),
         "delivered": sum(1 for r in rows if r["cat"] == "delivered"),
@@ -668,7 +679,11 @@ def checks_page(now: datetime | None = None) -> dict:
         "mcf_counts": dict(Counter(x["level"] for x in mcf)),
         "checklist": checklist(rows),
         "unconfirmed": sorted(
-            [r for r in rows if r["cat"] == "unconfirmed"],
+            [
+                r
+                for r in rows
+                if r["unconfirmed"] and r["cat"] not in ("delivered", "covered", "lost", "failed")
+            ],
             key=lambda r: (not r["tracking_missing"], -(r["days"] or 0)),
         ),
     }
@@ -721,7 +736,11 @@ def export_csv(kind: str, **filters: Any) -> tuple[str, str]:
         )
     if kind == "verify":
         rows = sorted(
-            [r for r in classify() if r["cat"] == "unconfirmed"],
+            [
+                r
+                for r in classify()
+                if r["unconfirmed"] and r["cat"] not in ("delivered", "covered", "lost", "failed")
+            ],
             key=lambda r: (not r["tracking_missing"], -(r["days"] or 0)),
         )
         head = [

@@ -96,7 +96,9 @@ def test_flow_rules_and_flags(app):
     assert rows["#1"]["cat"] == "red" and rows["#1"]["stage"] == "pre_dispatch"
     assert rows["#2"]["cat"] == "red" and rows["#2"]["stage"] == "dispatched"
     assert rows["#3"]["cat"] == "orange" and rows["#3"]["no_move"] is True
-    assert rows["#6"]["cat"] == "unconfirmed"
+    assert (
+        rows["#6"]["cat"] == "red" and rows["#6"]["unconfirmed"] is True
+    )  # Amazon with tracking is aged like the rest
     assert "#4" not in rows  # cancelled order is left out
     assert "#5" not in rows  # delivered leaves the active queue
     assert by_order(app, "delivered")["#5"]["cat"] == "delivered"
@@ -106,7 +108,8 @@ def test_flow_rules_and_flags(app):
 def test_summary_counts_match_rows(app):
     s = get(app, "/api/shipping/summary").json()
     k = s["kpis"]
-    assert k["red"] == 3 and k["unconfirmed"] == 1 and k["nomove"] == 1 and k["delivered"] == 1
+    assert k["red"] == 4 and k["unconfirmed"] == 0 and k["nomove"] == 1 and k["delivered"] == 1
+    assert k["red_no_delivery_event"] == 1  # the Amazon shipment
     assert s["total"] == 21 and s["empty"] is False
 
 
@@ -166,9 +169,9 @@ def test_exports_and_formula_safety(app):
 def test_analytics_and_checks_have_real_numbers(app):
     a = get(app, "/api/shipping/analytics").json()
     assert (
-        a["kpis"]["critical"] == 3 and a["kpis"]["value_at_risk"] is None
+        a["kpis"]["critical"] == 4 and a["kpis"]["value_at_risk"] is None
     )  # no order totals loaded: not invented
-    assert sum(x["count"] for x in a["aging"]) == 20 - 1  # unconfirmed is not in the aging bands
+    assert sum(x["count"] for x in a["aging"]) == 20  # every active shipment is in an aging band
     c = get(app, "/api/shipping/checks").json()
     assert c["checklist"]["total"] == 1 and c["mcf"] == []
 
@@ -276,3 +279,31 @@ def test_issues_page_groups_missing_lost_and_undeliverable(app):
         "#7",
     }  # #7 is the seeded carrier failed delivery
     assert d["counts"]["lost"] == 1 and "#801" not in orders["missing"]
+
+
+def test_amazon_with_tracking_is_aged_normally_and_only_no_tracking_is_unconfirmed(app):
+    repo.save_shipments(
+        [
+            rec(
+                820, carrier="Amazon Logistics", ordered=3, fulfilled=1, tracking="TBA820"
+            ),  # recent: on track
+            rec(
+                821, carrier="Amazon Logistics", ordered=20, fulfilled=12, tracking="TBA821"
+            ),  # delayed: red
+            rec(
+                822, carrier="", ordered=20, fulfilled=12, tracking=""
+            ),  # nothing to track: unconfirmed
+        ]
+    )
+    cats = {r["order_number"]: r["cat"] for r in service.classify()}
+    assert cats["#820"] == "on_track" and cats["#821"] == "red" and cats["#822"] == "unconfirmed"
+    d = get(app, "/api/shipping/shipments/detail?order=%23821").json()["shipment"]
+    assert (
+        d["unconfirmed"] is True and "Amazon sends no delivery event" in d["action"]
+    )  # still gets the team check
+    c = local_client(app)
+    mark = {"order_number": "#821", "tracking_number": "TBA821", "status": "delivered"}
+    assert c.post("/api/shipping/shipments/manual", json=mark, headers=H).status_code == 200
+    assert {r["order_number"]: r["cat"] for r in service.classify()}[
+        "#821"
+    ] == "delivered"  # a team mark still wins
