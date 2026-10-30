@@ -148,7 +148,7 @@ export function ShipmentDrawer({ order, keyId, onClose, onChanged }) {
               <textarea className="textarea" rows={3} value={noteText} readOnly={!can('shipping:update')} onChange={(e) => setNote(e.target.value)} placeholder="Add a note about this order"/>
               {can('shipping:update') ? <div className="row mt-8"><Button size="sm" variant="primary" loading={busy === 'note'} disabled={note === null} onClick={saveNote}>Save note</Button></div> : null}
             </div>
-            <p className="mt-16"><Link href={`/shipping/shipments?q=${encodeURIComponent(s.order_number)}`} className="small">See this order in the list</Link></p>
+            <p className="mt-16">{s.issue ? <Link href="/shipping/issues" className="small">See it on Lost &amp; missing</Link> : <Link href={`/shipping/shipments?q=${encodeURIComponent(s.order_number)}`} className="small">See this order in the list</Link>}</p>
           </>)}
       </div>
     </Drawer>);

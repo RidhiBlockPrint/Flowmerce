@@ -100,19 +100,24 @@ def test_flow_rules_and_flags(app):
     assert "#4" not in rows  # cancelled order is left out
     assert "#5" not in rows  # delivered leaves the active queue
     assert by_order(app, "delivered")["#5"]["cat"] == "delivered"
-    assert "#7" in by_order(app, "exception")
+    assert "#7" not in by_order(
+        app, "exception"
+    )  # a carrier-reported failed delivery lives on the issues page
+    assert "#7" in {
+        r["order_number"] for r in get(app, "/api/shipping/issues").json()["undeliverable"]
+    }
 
 
 def test_summary_counts_match_rows(app):
     s = get(app, "/api/shipping/summary").json()
     k = s["kpis"]
-    assert k["red"] == 3 and k["unconfirmed"] == 1 and k["nomove"] == 1 and k["delivered"] == 1
-    assert s["total"] == 21 and s["empty"] is False
+    assert k["red"] == 2 and k["unconfirmed"] == 1 and k["nomove"] == 1 and k["delivered"] == 1
+    assert s["total"] == 20 and s["empty"] is False
 
 
 def test_paging_is_server_side(app):
     r = get(app, "/api/shipping/shipments?size=10&page=1").json()
-    assert len(r["rows"]) == 10 and r["total"] == 20 and r["pages"] == 2 and r["page"] == 1
+    assert len(r["rows"]) == 9 and r["total"] == 19 and r["pages"] == 2 and r["page"] == 1
     assert get(app, "/api/shipping/shipments?view=bogus").status_code == 400
 
 
@@ -166,9 +171,9 @@ def test_exports_and_formula_safety(app):
 def test_analytics_and_checks_have_real_numbers(app):
     a = get(app, "/api/shipping/analytics").json()
     assert (
-        a["kpis"]["critical"] == 3 and a["kpis"]["value_at_risk"] is None
+        a["kpis"]["critical"] == 2 and a["kpis"]["value_at_risk"] is None
     )  # no order totals loaded: not invented
-    assert sum(x["count"] for x in a["aging"]) == 20 - 1  # unconfirmed is not in the aging bands
+    assert sum(x["count"] for x in a["aging"]) == 19 - 1  # unconfirmed is not in the aging bands
     c = get(app, "/api/shipping/checks").json()
     assert c["checklist"]["total"] == 1 and c["mcf"] == []
 
@@ -276,3 +281,33 @@ def test_issues_page_groups_missing_lost_and_undeliverable(app):
         "#7",
     }  # #7 is the seeded carrier failed delivery
     assert d["counts"]["lost"] == 1 and "#801" not in orders["missing"]
+
+
+def test_issue_shipments_are_kept_out_of_every_total_and_list(app):
+    before = get(app, "/api/shipping/summary").json()
+    repo.save_shipments(
+        [
+            rec(810, carrier="", ordered=20, fulfilled=15, tracking=""),  # missing tracking
+            rec(
+                811, carrier="Amazon Logistics", ordered=20, fulfilled=15, tracking="TBA811"
+            ),  # marked lost
+            rec(
+                812, carrier="Amazon Logistics", ordered=20, fulfilled=15, tracking="TBA812"
+            ),  # marked failed
+        ]
+    )
+    repo.set_manual_status("#811", "TBA811", "lost", "team")
+    repo.set_manual_status("#812", "TBA812", "failed", "team")
+    after = get(app, "/api/shipping/summary").json()
+    assert (
+        after["kpis"] == before["kpis"] and after["total"] == before["total"]
+    )  # nothing added to the totals
+    listed = {
+        r["order_number"] for r in get(app, "/api/shipping/shipments?size=200").json()["rows"]
+    }
+    assert not ({"#810", "#811", "#812"} & listed)
+    a = get(app, "/api/shipping/analytics").json()
+    assert a["kpis"]["active"] == before["kpis"]["active"]
+    counts = get(app, "/api/shipping/issues").json()["counts"]
+    assert counts["missing"] >= 1 and counts["lost"] == 1 and counts["undeliverable"] >= 2
+    assert "#810" in get(app, "/api/shipping/export/issues").text

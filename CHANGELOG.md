@@ -2,6 +2,10 @@
 
 Format: newest first. Types: Added, Changed, Fixed, Removed, Architecture.
 
+## 2026-10-30 (Shipping: Lost & missing kept out of the totals)
+
+- New page **Shipping -> Lost & missing** (`/shipping/issues`, `GET /api/shipping/issues`, CSV export) with separate sections for missing tracking, lost, and could not deliver (team marks, or a carrier-reported failed delivery). These shipments are **excluded from every total, list, chart, export and the Checks checklist elsewhere**; their counts appear only on that page. Current data: active 1,004 -> 902 (98 missing, 3 lost, 1 could not deliver). Nothing is deleted; a team mark can still be changed from the shipment drawer.
+
 ## 2026-10-30 (Shipping: packages fulfilled by hand)
 
 - New category **"Fulfilled by hand, tracked package delivered"** (`covered`). A package with no tracking number (marked fulfilled by hand in Shopify, e.g. MCF orders) used to stay "carrier unconfirmed" even when the order's tracked packages were delivered. It is now covered when Shopify says the whole order is FULFILLED and every package that has a tracking number is delivered. It leaves the unconfirmed queue and the active counts, has its own tag, count (Overview legend, Shipments tile, quick view, Checks tile) and `view=covered` filter, and a team mark on the package still overrides it. Nothing is changed in Shopify or deleted. On the current data: 108 packages covered, unconfirmed 811 -> 700 (e.g. order #5311). Amazon tracking is a separate piece of work.
