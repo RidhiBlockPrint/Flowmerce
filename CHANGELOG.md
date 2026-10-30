@@ -2,6 +2,10 @@
 
 Format: newest first. Types: Added, Changed, Fixed, Removed, Architecture.
 
+## 2026-10-30 (Shipping: packages fulfilled by hand)
+
+- New category **"Fulfilled by hand, tracked package delivered"** (`covered`). A package with no tracking number (marked fulfilled by hand in Shopify, e.g. MCF orders) used to stay "carrier unconfirmed" even when the order's tracked packages were delivered. It is now covered when Shopify says the whole order is FULFILLED and every package that has a tracking number is delivered. It leaves the unconfirmed queue and the active counts, has its own tag, count (Overview legend, Shipments tile, quick view, Checks tile) and `view=covered` filter, and a team mark on the package still overrides it. Nothing is changed in Shopify or deleted. On the current data: 108 packages covered, unconfirmed 811 -> 700 (e.g. order #5311). Amazon tracking is a separate piece of work.
+
 ## 2026-10-30 (Shipping live data import)
 
 - Imported the live tracker data from Supabase (read-only): 4,409 shipments, 35 sync runs, 3,753 order checks, 38 manual marks; the 104 stale rows from the old 17 Oct snapshot were removed with the new `--prune` option (backups taken first). Counts now match the owner's live dashboard (1,089 active, 786 unconfirmed, 21 stuck, 195 on track, 32 yellow; critical and orange differ by one because a shipment crossed a threshold between the screenshot and the import).

@@ -8,7 +8,7 @@ from tests.fixtures.seo import local_client, remote_client
 
 from flowmerce.modules.seo.app import create_app
 from flowmerce.modules.seo.db import run
-from flowmerce.modules.shipping import repo, sync
+from flowmerce.modules.shipping import repo, service, sync
 from flowmerce.modules.shipping.config import ShippingConfig
 
 H = {"X-Requested-With": "blog-ops"}
@@ -189,3 +189,52 @@ def test_sync_without_credentials_records_a_failed_run_and_calls_nothing(app, mo
     assert r.status_code == 200 and r.json()["sync_status"] == "failed"
     assert len(repo.load_shipments()) == before
     assert get(app, "/api/shipping/runs").json()["warning"]["level"] == "error"
+
+
+def test_package_fulfilled_by_hand_is_covered_when_tracked_packages_are_delivered(app):
+    def pkg(n, fid, tracking, carrier, status="in_transit", delivered=None):
+        return rec(
+            n,
+            carrier=carrier,
+            ordered=30,
+            fulfilled=20,
+            status=status,
+            delivered=delivered,
+            tracking=tracking,
+        ) | {"fulfillment_id": fid}
+
+    repo.save_shipments(
+        [
+            pkg(900, "F900a", "DHL900", "DHL Express", "delivered", 5),
+            pkg(900, "F900b", "", ""),  # covered
+            pkg(901, "F901a", "DHL901", "DHL Express", "in_transit"),
+            pkg(901, "F901b", "", ""),  # tracked not delivered
+            pkg(902, "F902a", "DHL902", "DHL Express", "delivered", 5),
+            pkg(902, "F902b", "", ""),  # order not FULFILLED
+            pkg(903, "F903a", "DHL903", "DHL Express", "delivered", 5),
+            pkg(903, "F903b", "", ""),  # team already marked it
+            pkg(904, "F904a", "", ""),  # nothing tracked at all
+        ]
+    )
+    done = {"fulfillment_status": "FULFILLED", "financial_status": "PAID", "cancelled": False}
+    repo.upsert_order_checks(
+        [
+            {**done, "order_number": "#900"},
+            {**done, "order_number": "#901"},
+            {**done, "order_number": "#902", "fulfillment_status": "PARTIALLY_FULFILLED"},
+            {**done, "order_number": "#903"},
+            {**done, "order_number": "#904"},
+        ]
+    )
+    repo.set_manual_status("#903", "", "in_transit", "team")
+    cats = {(r["order_number"], r["fulfillment_id"]): r["cat"] for r in service.classify()}
+    assert cats[("#900", "F900b")] == "covered"
+    assert cats[("#901", "F901b")] == "unconfirmed"  # a tracked package is still in transit
+    assert (
+        cats[("#902", "F902b")] == "unconfirmed"
+    )  # Shopify does not say the whole order is fulfilled
+    assert cats[("#903", "F903b")] == "unconfirmed"  # the team's own mark wins
+    assert cats[("#904", "F904a")] == "unconfirmed"  # no tracked package to rely on
+    assert "#900" not in by_order(app) and "#900" in by_order(app, "covered")
+    k = get(app, "/api/shipping/summary").json()["kpis"]
+    assert k["covered"] == 1 and get(app, "/api/shipping/shipments?view=covered").status_code == 200

@@ -35,6 +35,7 @@ VIEWS = {
     "lost",
     "failed",
     "delivered",
+    "covered",
 }
 SORTS = {"priority", "oldest", "stuck", "order"}
 

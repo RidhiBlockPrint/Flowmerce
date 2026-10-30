@@ -10,6 +10,7 @@ export const CATS = {
     lost: { label: 'Lost (team confirmed)', short: 'Lost', color: '#7a1a12' },
     failed: { label: 'Could not deliver (team confirmed)', short: 'Failed', color: '#b25410' },
     delivered: { label: 'Delivered', short: 'Delivered', color: '#2f5d8a' },
+    covered: { label: 'Fulfilled by hand, tracked package delivered', short: 'Fulfilled by hand', color: '#4a7a8c' },
 };
 export const MANUAL = { delivered: 'Delivered', lost: 'Lost', failed: 'Could not deliver', in_transit: 'Still in transit' };
 /** Button labels for the team check in the shipment drawer (same wording as the original tracker). */

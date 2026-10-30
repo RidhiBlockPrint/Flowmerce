@@ -34,8 +34,18 @@ CAT_LABEL = {
     "red": "Red 9+ days",
     "no_scan": "No scan data",
     "delivered": "Delivered",
+    "covered": "Fulfilled by hand, tracked package delivered",
 }
-RANK = {"red": 0, "orange": 1, "yellow": 2, "grey": 3, "no_scan": 4, "on_track": 5, "delivered": 6}
+RANK = {
+    "red": 0,
+    "orange": 1,
+    "yellow": 2,
+    "grey": 3,
+    "no_scan": 4,
+    "on_track": 5,
+    "delivered": 6,
+    "covered": 7,
+}
 MANUAL_STATUSES = ("delivered", "lost", "failed", "in_transit")
 MCF_LEVELS = ((10, "critical", "Critical"), (7, "watch", "Watch"), (5, "alert", "Alert"))
 STALE_HOURS = 26
@@ -93,6 +103,7 @@ def action_text(cat: str, exc: str, stage: str) -> str:
         "red": "Add to urgent escalation list.",
         "no_scan": "Verify tracking details or wait for first carrier scan.",
         "delivered": "None. Delivered.",
+        "covered": "Marked fulfilled by hand without tracking. Every tracked package on this order is delivered, so there is nothing to check.",
         "unconfirmed": "Open the carrier page, check the parcel and mark it here.",
         "lost": "Team confirmed lost. Decide on reship or refund.",
         "failed": "Team confirmed it could not be delivered. Decide the next step.",
@@ -195,11 +206,35 @@ def classify(now: datetime | None = None) -> list[dict]:
         }
         row["action"] = action_text(final, r["exception"], stage)
         out.append(row)
+    _mark_covered(out, checks)
     return out
 
 
+def _mark_covered(rows: list[dict], checks: dict) -> None:
+    """A package marked fulfilled by hand (no tracking number) is "covered" when Shopify says the whole order is
+    FULFILLED and every package of the order that has a tracking number is delivered. It leaves the unconfirmed
+    queue under its own tag. A team mark on the package always wins, and nothing is changed in Shopify."""
+    by_order: dict[str, list[dict]] = defaultdict(list)
+    for r in rows:
+        by_order[r["order_number"]].append(r)
+    for order_number, pkgs in by_order.items():
+        if (
+            str((checks.get(order_number) or {}).get("fulfillment_status", "")).upper()
+            != "FULFILLED"
+        ):
+            continue
+        tracked = [p for p in pkgs if not p["tracking_missing"]]
+        if not tracked or any(p["cat"] != "delivered" for p in tracked):
+            continue
+        for p in pkgs:
+            if p["cat"] == "unconfirmed" and p["tracking_missing"] and not p["manual"]:
+                p["cat"] = "covered"
+                p["cat_label"] = CAT_LABEL["covered"]
+                p["action"] = action_text("covered", "", p["stage"])
+
+
 def _active(rows: list[dict]) -> list[dict]:
-    return [r for r in rows if r["cat"] != "delivered"]
+    return [r for r in rows if r["cat"] not in ("delivered", "covered")]
 
 
 def week_key(iso: Any) -> str | None:
@@ -222,15 +257,15 @@ def _matches(
         if not r["no_move"]:
             return False
     elif view == "noscan":
-        if r["last_scan_at"] or r["cat"] == "delivered":
+        if r["last_scan_at"] or r["cat"] in ("delivered", "covered"):
             return False
     elif view == "exception":
-        if not r["exception"] or r["cat"] == "delivered":
+        if not r["exception"] or r["cat"] in ("delivered", "covered"):
             return False
     elif view:
         if r["cat"] != view:
             return False
-    elif r["cat"] == "delivered":
+    elif r["cat"] in ("delivered", "covered"):
         return False  # delivered shipments leave the active queue
     if carrier and r["carrier_name"] != carrier:
         return False
@@ -332,9 +367,10 @@ def kpi_counts(rows: list[dict]) -> dict:
         "red": c["red"],
         "no_scan": c["no_scan"],
         "unconfirmed": c["unconfirmed"],
-        "exception": sum(1 for r in rows if r["exception"] and r["cat"] != "delivered"),
+        "exception": sum(1 for r in active if r["exception"]),
         "nomove": sum(1 for r in active if r["no_move"]),
-        "delivered": len(rows) - len(active),
+        "delivered": sum(1 for r in rows if r["cat"] == "delivered"),
+        "covered": sum(1 for r in rows if r["cat"] == "covered"),
     }
 
 
@@ -361,7 +397,7 @@ def carrier_table(rows: list[dict]) -> list[dict]:
     for r in rows:
         name = r["carrier_name"] or "Unknown"
         c = by[name]
-        if r["cat"] != "delivered":
+        if r["cat"] not in ("delivered", "covered"):
             c["active"] += 1
             c["cats"][r["cat"]] += 1
             if r["days"] is not None:
@@ -452,7 +488,7 @@ def mcf_list(now: datetime | None = None) -> list[dict]:
 
 
 def checklist(rows: list[dict]) -> dict:
-    group = [r for r in rows if r["unconfirmed"]]
+    group = [r for r in rows if r["unconfirmed"] and r["cat"] != "covered"]
     st = Counter((r["manual"] or {}).get("status", "") for r in group)
     return {
         "total": len(group),
@@ -462,6 +498,7 @@ def checklist(rows: list[dict]) -> dict:
         "in_transit": st["in_transit"],
         "unchecked": sum(1 for r in group if not r["manual"]),
         "tracking_missing": sum(1 for r in group if r["tracking_missing"]),
+        "covered": sum(1 for r in rows if r["cat"] == "covered"),
     }
 
 

@@ -69,6 +69,7 @@ export default function ShippingOverview() {
               <div className="row" style={{ gap: 16, flexWrap: 'wrap', alignItems: 'center' }}>
                 <Donut ariaLabel="Active shipments by aging stage" center={fmtInt(data.confirmed)} sub="active" size={150} items={data.health.map((h) => ({ label: CATS[h.key].short, value: h.count, color: CATS[h.key].color, key: h.key }))} onSelect={(i) => nav(`/shipping/shipments?view=${i.key}`)}/>
                 <div className="legend-list">
+                  <Link href="/shipping/shipments?view=covered" className="row" style={{ gap: 8, color: 'inherit' }} title="Packages marked fulfilled by hand (no tracking) on orders whose tracked packages are all delivered"><i style={{ width: 10, height: 10, borderRadius: 3, background: CATS.covered.color }}/>Fulfilled by hand<b style={{ marginLeft: 'auto' }}>{fmtInt(k.covered)}</b></Link>
                   <Link href="/shipping/shipments?view=delivered" className="row" style={{ gap: 8, color: 'inherit' }}><i style={{ width: 10, height: 10, borderRadius: 3, background: CATS.delivered.color }}/>Delivered<b style={{ marginLeft: 'auto' }}>{fmtInt(k.delivered)}</b></Link>
                   {data.health.map((h) => (<Link key={h.key} href={`/shipping/shipments?view=${h.key}`} className="row" style={{ gap: 8, color: 'inherit' }}><i style={{ width: 10, height: 10, borderRadius: 3, background: CATS[h.key].color }}/>{CATS[h.key].short}<b style={{ marginLeft: 'auto' }}>{fmtInt(h.count)}</b></Link>))}
                 </div>

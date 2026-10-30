@@ -41,6 +41,7 @@ export default function ShippingChecks() {
               <Tile n={c.in_transit} label="Still in transit" color="#2f5d8a"/>
               <Tile n={c.unchecked} label="Not checked yet" color="#8b8279"/>
               <Tile n={c.tracking_missing} label="Tracking missing" color="#b42318"/>
+              <Tile n={c.covered} label="Covered (fulfilled by hand)" color="#4a7a8c"/>
             </div>
             {data.unconfirmed.length ? (<Paged rows={data.unconfirmed}>{(rows) => (<div className="table-wrap">
                   <table className="t compact">
