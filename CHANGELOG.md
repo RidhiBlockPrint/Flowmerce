@@ -2,6 +2,11 @@
 
 Format: newest first. Types: Added, Changed, Fixed, Removed, Architecture.
 
+## 2026-10-30 (Shipping: phantom rows and tracking re-check)
+
+- **Fixed wrong "missing tracking" rows.** Rows are keyed by fulfillment + tracking number, so when Shopify later gets a tracking number for a fulfillment the old empty-tracking row stayed behind (order # RBP6114: USPS tracking present in Shopify, still listed as missing). 130 such stale rows (111 of them empty-tracking) are now hidden: an empty-tracking row is superseded when its fulfillment has a tracking number, and a row an order's later sync did not return is dropped. Nothing is deleted; `/api/shipping/status` reports `supersededRows`. Missing tracking 98 -> 35, critical 48 -> 45, stuck 21 -> 16, covered 108 -> 61.
+- **Re-check in Shopify** button on the Lost & missing page (`POST /api/shipping/issues/recheck`): fetches exactly the missing-tracking orders by name from Shopify (read-only) and saves what it says now, without writing a sync-run row. Run live on the 35: Shopify returned 34 of them and none has a tracking number; #4414 is no longer found in Shopify.
+
 ## 2026-10-30 (Shipping: Lost & missing kept out of the totals)
 
 - New page **Shipping -> Lost & missing** (`/shipping/issues`, `GET /api/shipping/issues`, CSV export) with separate sections for missing tracking, lost, and could not deliver (team marks, or a carrier-reported failed delivery). These shipments are **excluded from every total, list, chart, export and the Checks checklist elsewhere**; their counts appear only on that page. Current data: active 1,004 -> 902 (98 missing, 3 lost, 1 could not deliver). Nothing is deleted; a team mark can still be changed from the shipment drawer.

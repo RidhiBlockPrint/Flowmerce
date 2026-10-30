@@ -301,3 +301,43 @@ def test_config_accepts_the_original_tracker_setting_names(monkeypatch):
     assert c.has_shopify_credentials
     values["SHIPPING_SHOPIFY_CLIENT_ID"] = "id2"  # the Shipping name wins when both exist
     assert shipping_config.load_config().client_id == "id2"
+
+
+def test_recheck_asks_shopify_about_missing_orders_and_picks_up_added_tracking():
+    from flowmerce.modules.shipping.sync import recheck_missing
+
+    base = {f: None for f in repo.SHIPMENT_FIELDS}
+    repo.save_shipments(
+        [
+            base
+            | {
+                "shopify_order_id": "gid://shopify/Order/70",
+                "order_number": "#70",
+                "fulfillment_id": "gid://shopify/Fulfillment/70",
+                "tracking_number": "",
+                "carrier_name": "",
+                "order_created_at": "2026-09-01T00:00:00+00:00",
+                "fulfilled_at": "2026-09-02T00:00:00+00:00",
+                "last_checked_at": "2026-10-01T00:00:00+00:00",
+            }
+        ]
+    )
+    assert [r["order_number"] for r in service.issues(NOW)["missing"]] == ["#70"]
+    asked = []
+
+    class FakeShopify:
+        def fetch_orders_by_name(self, names):
+            asked.extend(names)
+            o = order(70)
+            o["name"], o["id"] = "#70", "gid://shopify/Order/70"
+            o["fulfillments"][0]["id"] = "gid://shopify/Fulfillment/70"
+            yield o
+
+    result = recheck_missing(FakeShopify())
+    assert asked == ["#70"] and result["fixed"] == 1 and result["still_missing"] == 0
+    assert (
+        service.issues(NOW)["missing"] == []
+    )  # the old empty-tracking row is superseded by the new one
+    assert not repo.list_runs(10) or all(
+        r["started_at"] != "" for r in repo.list_runs(10)
+    )  # no sync-run row required

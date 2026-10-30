@@ -311,3 +311,36 @@ def test_issue_shipments_are_kept_out_of_every_total_and_list(app):
     counts = get(app, "/api/shipping/issues").json()["counts"]
     assert counts["missing"] >= 1 and counts["lost"] == 1 and counts["undeliverable"] >= 2
     assert "#810" in get(app, "/api/shipping/export/issues").text
+
+
+def test_rows_shopify_no_longer_reports_do_not_become_phantom_shipments(app):
+    def row(fid, tracking, checked, status="in_transit"):
+        return rec(950, ordered=30, fulfilled=20, status=status, tracking=tracking) | {
+            "fulfillment_id": fid,
+            "last_checked_at": checked,
+        }
+
+    old, new = iso(8), iso(0)
+    repo.save_shipments(
+        [
+            row(
+                "F950a", "", old, "fulfilled"
+            ),  # tracking was empty, then added to the same fulfillment
+            row("F950a", "USPS950", new),  # the same fulfillment, now with its tracking number
+            row(
+                "F950b", "GONE950", old
+            ),  # a fulfillment Shopify stopped returning (replaced / cancelled)
+            row("F950c", "KEEP950", new),  # still reported
+        ]
+    )
+    shown = {
+        (r["fulfillment_id"], r["tracking_number"])
+        for r in service.classify()
+        if r["order_number"] == "#950"
+    }
+    assert shown == {("F950a", "USPS950"), ("F950c", "KEEP950")}
+    assert "#950" not in {
+        r["order_number"] for r in get(app, "/api/shipping/issues").json()["missing"]
+    }
+    assert get(app, "/api/shipping/status").json()["supersededRows"] >= 2
+    assert len(repo.load_shipments()) >= 4  # nothing was deleted

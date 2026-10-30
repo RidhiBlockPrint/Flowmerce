@@ -153,3 +153,59 @@ def tick(every_hours: int = 1) -> None:
         except ValueError:
             pass
     sync_now()
+
+
+class _OrdersByName:
+    """Gives run_sync the orders for a fixed list of names instead of the open-orders search."""
+
+    def __init__(self, shopify, names: list[str]):
+        self.shopify, self.names = shopify, names
+
+    def fetch_orders(self, since: str):
+        yield from self.shopify.fetch_orders_by_name(self.names)
+
+
+class _QuietStore(SqliteStore):
+    """A re-check updates the shipments but is not a full sync, so it does not write a sync-run row."""
+
+    def record_run(self, run_row: dict) -> None:
+        return None
+
+
+def recheck_missing(shopify=None) -> dict:
+    """Ask Shopify again (read-only) about every order that is listed as missing a tracking number.
+
+    The normal sync only looks at open orders, so a tracking number added later to an older order can be missed.
+    This fetches exactly those orders by name and saves what Shopify says now."""
+    from . import service  # local import: service does not depend on sync
+
+    names = sorted({r["order_number"] for r in service.issues()["missing"]})
+    if not names:
+        return {
+            "requested": 0,
+            "found": 0,
+            "fixed": 0,
+            "sync_status": "success",
+            "error_summary": "",
+        }
+    cfg = load_config()
+    if shopify is None:
+        if not cfg.has_shopify_credentials:
+            return {
+                "requested": len(names),
+                "found": 0,
+                "fixed": 0,
+                "sync_status": "failed",
+                "error_summary": "Shopify credentials are not set in .env.",
+            }
+        shopify = build_shopify(cfg)
+    result = run_sync(cfg, _OrdersByName(shopify, names), _QuietStore())
+    still = {r["order_number"] for r in service.issues()["missing"]}
+    return {
+        "requested": len(names),
+        "found": result["orders_processed"],
+        "fixed": len(set(names) - still),
+        "still_missing": len(set(names) & still),
+        "sync_status": result["sync_status"],
+        "error_summary": result["error_summary"],
+    }
