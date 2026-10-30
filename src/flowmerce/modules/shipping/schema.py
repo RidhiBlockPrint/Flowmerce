@@ -6,7 +6,7 @@ from __future__ import annotations
 
 from ..seo.db import all_rows, get, run
 
-VERSION = 1
+VERSION = 2
 
 TABLES = """
 CREATE TABLE IF NOT EXISTS shipping_meta (
@@ -80,11 +80,31 @@ CREATE TABLE IF NOT EXISTS shipping_notes (
 """
 
 
+UPGRADES = {
+    # version 2: order total / currency on each shipment (value at risk) and the Shopify id on order checks
+    2: [
+        ("shipping_shipments", "order_total", "REAL"),
+        ("shipping_shipments", "order_currency", "TEXT NOT NULL DEFAULT ''"),
+        ("shipping_order_checks", "shopify_order_id", "TEXT NOT NULL DEFAULT ''"),
+    ],
+}
+
+
+def _columns(table: str) -> set[str]:
+    return {r["name"] for r in all_rows(f"PRAGMA table_info({table})")}
+
+
 def ensure_schema() -> None:
     for stmt in [s.strip() for s in TABLES.split(";") if s.strip()]:
         run(stmt)
-    if not get("SELECT 1 FROM shipping_meta WHERE key = 'schema_version'"):
-        run("INSERT INTO shipping_meta (key, value) VALUES ('schema_version', ?)", str(VERSION))
+    for version in sorted(UPGRADES):
+        for table, column, ddl in UPGRADES[version]:
+            if column not in _columns(table):
+                run(f"ALTER TABLE {table} ADD COLUMN {column} {ddl}")
+    run(
+        "INSERT INTO shipping_meta (key, value) VALUES ('schema_version', ?) ON CONFLICT (key) DO UPDATE SET value = excluded.value",
+        str(VERSION),
+    )
 
 
 def schema_version() -> int:

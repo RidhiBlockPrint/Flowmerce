@@ -187,8 +187,11 @@ def classify(now: datetime | None = None) -> list[dict]:
             "tracking_missing": (not r["tracking_number"])
             or str(r["tracking_number"]).startswith("EMPTY"),
             "note": (note_map.get(r["order_number"]) or {}).get("note", ""),
-            "order_total": (checks.get(r["order_number"]) or {}).get("order_total"),
-            "order_currency": (checks.get(r["order_number"]) or {}).get("order_currency", ""),
+            "order_total": r["order_total"]
+            if r["order_total"] is not None
+            else (checks.get(r["order_number"]) or {}).get("order_total"),
+            "order_currency": r["order_currency"]
+            or (checks.get(r["order_number"]) or {}).get("order_currency", ""),
         }
         row["action"] = action_text(final, r["exception"], stage)
         out.append(row)
@@ -449,7 +452,7 @@ def mcf_list(now: datetime | None = None) -> list[dict]:
 
 
 def checklist(rows: list[dict]) -> dict:
-    group = [r for r in rows if r["unconfirmed"] and not r["shopify_delivered"]]
+    group = [r for r in rows if r["unconfirmed"]]
     st = Counter((r["manual"] or {}).get("status", "") for r in group)
     return {
         "total": len(group),
@@ -462,7 +465,7 @@ def checklist(rows: list[dict]) -> dict:
     }
 
 
-def summary(now: datetime | None = None) -> dict:
+def summary(now: datetime | None = None, week_days: int = 0) -> dict:
     now = now or datetime.now(UTC)
     rows = classify(now)
     active = _active(rows)
@@ -480,7 +483,7 @@ def summary(now: datetime | None = None) -> dict:
             {"key": key, "count": k[key]}
             for key in ("red", "orange", "yellow", "grey", "on_track", "no_scan")
         ],
-        "weeks": weeks(active, 10),
+        "weeks": weeks([r for r in active if not week_days or ((c := _dt(r["order_created_at"])) and c >= now - timedelta(days=week_days))], 10),
         "carriers": [
             {
                 "name": c["name"],

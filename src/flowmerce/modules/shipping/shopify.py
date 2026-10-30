@@ -11,7 +11,9 @@ query Orders($cursor: String, $q: String!) {
   orders(first: 50, after: $cursor, query: $q, sortKey: CREATED_AT) {
     pageInfo { hasNextPage endCursor }
     edges { node {
-      id name createdAt cancelledAt displayFulfillmentStatus
+      id name createdAt cancelledAt displayFulfillmentStatus displayFinancialStatus
+      totalPriceSet { shopMoney { amount currencyCode } }
+      note
       fulfillments(first: 20) {
         id status createdAt displayStatus estimatedDeliveryAt deliveredAt
         trackingInfo(first: 10) { number company url }

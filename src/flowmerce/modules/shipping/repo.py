@@ -31,6 +31,8 @@ SHIPMENT_FIELDS = (
     "last_checked_at",
     "carrier_error",
     "delivered_at",
+    "order_total",
+    "order_currency",
 )
 TEXT_DEFAULT = {
     "tracking_number",
@@ -43,6 +45,7 @@ TEXT_DEFAULT = {
     "last_scan_location",
     "tracking_source",
     "carrier_error",
+    "order_currency",
 }
 RUN_FIELDS = (
     "started_at",
@@ -56,6 +59,7 @@ RUN_FIELDS = (
 )
 CHECK_FIELDS = (
     "order_number",
+    "shopify_order_id",
     "order_created_at",
     "fulfillment_status",
     "financial_status",
@@ -64,7 +68,13 @@ CHECK_FIELDS = (
     "order_total",
     "order_currency",
 )
-CHECK_TEXT = ("fulfillment_status", "financial_status", "note", "order_currency")
+CHECK_TEXT = (
+    "shopify_order_id",
+    "fulfillment_status",
+    "financial_status",
+    "note",
+    "order_currency",
+)
 
 _ready_for: object = None
 
@@ -211,9 +221,10 @@ def upsert_order_checks(rows: Iterable[dict]) -> int:
                     v = ""
                 vals.append(v)
             run(
-                """INSERT INTO shipping_order_checks (order_number, order_created_at, fulfillment_status, financial_status,
-                     cancelled, note, order_total, order_currency, imported_at) VALUES (?,?,?,?,?,?,?,?,?)
-                   ON CONFLICT (order_number) DO UPDATE SET order_created_at = excluded.order_created_at,
+                """INSERT INTO shipping_order_checks (order_number, shopify_order_id, order_created_at, fulfillment_status,
+                     financial_status, cancelled, note, order_total, order_currency, imported_at) VALUES (?,?,?,?,?,?,?,?,?,?)
+                   ON CONFLICT (order_number) DO UPDATE SET shopify_order_id = excluded.shopify_order_id,
+                     order_created_at = excluded.order_created_at,
                      fulfillment_status = excluded.fulfillment_status, financial_status = excluded.financial_status,
                      cancelled = excluded.cancelled, note = excluded.note, order_total = excluded.order_total,
                      order_currency = excluded.order_currency, imported_at = excluded.imported_at""",
@@ -257,3 +268,9 @@ class SqliteStore:
 
     def record_run(self, run_row: dict) -> None:
         record_run(run_row)
+
+    def save_checks(self, records: list) -> None:
+        upsert_order_checks(records)
+
+    def load_checks(self) -> list:
+        return order_checks()

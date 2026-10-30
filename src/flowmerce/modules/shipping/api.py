@@ -12,6 +12,7 @@ from ..seo import auth
 from ..seo.audit import audit
 from ..seo.util import HttpError, s
 from . import repo, service
+from .alerts import run_alerts
 from .config import load_config
 from .schema import schema_version, table_counts
 from .sync import sync_now
@@ -81,7 +82,7 @@ def status(request: Request):
 @shipping.get("/summary")
 def summary(request: Request):
     auth.require_perm(request, "view")
-    return service.summary()
+    return service.summary(week_days=_int(request, "week_days", 0, 0, 3650))
 
 
 @shipping.get("/shipments")
@@ -178,3 +179,18 @@ def export(kind: str, request: Request):
         media_type="text/csv; charset=utf-8",
         headers={"Content-Disposition": f'attachment; filename="{name}"'},
     )
+
+
+@shipping.post("/alerts/send")
+async def send_alerts(request: Request):
+    """Email the critical / stuck / notes-mismatch digest now. Needs SMTP_HOST, SMTP_USER, SMTP_PASS, ALERT_TO in .env."""
+    u = auth.require_perm(request, "analytics:sync")
+    from . import repo as _repo
+
+    msg = await run_in_threadpool(
+        lambda: run_alerts(
+            _repo.all_shipments(), thresholds=load_config().thresholds, checks=_repo.order_checks()
+        )
+    )
+    audit(u, "shipping.alert", "alert", "", summary=msg[:200])
+    return {"result": msg}

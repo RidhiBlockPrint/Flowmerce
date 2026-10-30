@@ -8,7 +8,7 @@ from datetime import UTC, datetime
 
 from .carriers import get_adapter
 from .config import ShippingConfig, load_config
-from .normalize import normalize_orders
+from .normalize import normalize_order_checks, normalize_orders
 from .repo import SqliteStore, list_runs, row_key
 from .shopify import ShopifyClient, ShopifyError, TokenProvider
 
@@ -89,6 +89,10 @@ def run_sync(cfg: ShippingConfig, shopify, store, lookup=get_adapter, now=None) 
                 run["shipments_created"] += 1
             out[key] = rec
         store.save(list(out.values()))  # only after success
+        try:
+            store.save_checks(list(normalize_order_checks(orders)))
+        except Exception as exc:  # noqa: BLE001 - shipments are saved; report the order-check problem only
+            errors.append(f"order checks not saved: {type(exc).__name__}")
         run["sync_status"] = "partial" if errors else "success"
         run["error_summary"] = "; ".join(errors)[:1000]
     except Exception as exc:  # noqa: BLE001 - recorded on the run
@@ -134,7 +138,7 @@ def sync_now() -> dict:
     return run_sync(cfg, shopify, store)
 
 
-def tick(every_hours: int = 12) -> None:
+def tick(every_hours: int = 1) -> None:
     """Background refresh: sync when credentials exist and the last run is older than `every_hours`."""
     if not load_config().has_shopify_credentials:
         return

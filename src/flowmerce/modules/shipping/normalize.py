@@ -28,6 +28,25 @@ def parse_ts(value):
     return to_utc(datetime.fromisoformat(value.replace("Z", "+00:00")))
 
 
+def _money(order):
+    return (order.get("totalPriceSet") or {}).get("shopMoney") or {}
+
+
+def _order_total(order):
+    try:
+        return (
+            float(_money(order).get("amount"))
+            if _money(order).get("amount") not in (None, "")
+            else None
+        )
+    except (TypeError, ValueError):
+        return None
+
+
+def _order_currency(order):
+    return _money(order).get("currencyCode") or ""
+
+
 def normalize_orders(orders: Iterable[dict]):
     """Yield one shipment dict per (fulfillment, tracking number). Orders without
     fulfillments yield nothing (nothing to track yet)."""
@@ -56,6 +75,8 @@ def normalize_orders(orders: Iterable[dict]):
                     "carrier_name": t.get("company") or "",
                     "tracking_url": t.get("url") or "",
                     "order_created_at": parse_ts(order.get("createdAt")),
+                    "order_total": _order_total(order),
+                    "order_currency": _order_currency(order),
                     "fulfilled_at": parse_ts(f.get("createdAt")),
                     "expected_delivery_at": parse_ts(f.get("estimatedDeliveryAt")),
                     "delivered_at": parse_ts(f.get("deliveredAt")),
@@ -67,3 +88,22 @@ def normalize_orders(orders: Iterable[dict]):
                     "last_scan_description": (latest.get("message") or "") if latest else "",
                     "last_scan_location": "",
                 }
+
+
+def normalize_order_checks(orders: Iterable[dict]):
+    """One record per (non-cancelled) order: Shopify fulfillment status plus the order note.
+    Used to catch orders whose notes say DONE while Shopify still shows them as not fulfilled."""
+    for order in orders:
+        if not order.get("name"):
+            continue
+        yield {
+            "order_number": order["name"],
+            "shopify_order_id": order.get("id") or "",
+            "order_created_at": parse_ts(order.get("createdAt")),
+            "fulfillment_status": (order.get("displayFulfillmentStatus") or "").upper(),
+            "financial_status": (order.get("displayFinancialStatus") or "").upper(),
+            "cancelled": bool(order.get("cancelledAt")),
+            "note": (order.get("note") or "").strip(),
+            "order_total": _order_total(order),
+            "order_currency": _order_currency(order),
+        }

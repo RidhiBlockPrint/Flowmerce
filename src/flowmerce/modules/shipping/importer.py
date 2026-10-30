@@ -13,12 +13,14 @@ from __future__ import annotations
 import csv
 import json
 import sqlite3
+import urllib.error
+import urllib.request
 from datetime import datetime
 from pathlib import Path
 from typing import Any
 
 from ..seo import db
-from ..seo.config import config
+from ..seo.config import config, env
 from . import repo
 from .repo import SHIPMENT_FIELDS, row_key
 from .schema import table_counts
@@ -161,3 +163,88 @@ def default_shipments_file() -> Path | None:
         if p.exists():
             return p
     return None
+
+
+def _supabase_get(base: str, key: str, table: str, order: str, opener=None) -> list[dict]:
+    """Read every row of one Supabase table (GET only, paged by 1000). The key is sent as a header and never printed."""
+    open_url = opener or urllib.request.urlopen
+    headers = {"apikey": key}
+    if not key.startswith(
+        "sb_"
+    ):  # legacy JWT keys also need Bearer; new sb_ keys go in apikey only
+        headers["Authorization"] = f"Bearer {key}"
+    out: list[dict] = []
+    offset = 0
+    while True:
+        url = (
+            f"{base.rstrip('/')}/rest/v1/{table}?select=*&order={order}&limit=1000&offset={offset}"
+        )
+        try:
+            with open_url(urllib.request.Request(url, headers=headers), timeout=30) as resp:
+                rows = json.loads(resp.read().decode("utf-8"))
+        except urllib.error.HTTPError as exc:
+            raise RuntimeError(f"Supabase read of {table} failed: HTTP {exc.code}") from exc
+        out.extend(rows)
+        if len(rows) < 1000:
+            return out
+        offset += 1000
+
+
+def import_from_supabase(dry_run: bool = False, opener=None) -> dict:
+    """Copy the live tracker data (shipments, sync runs, order checks, manual status) from Supabase into Flowmerce.
+    Needs SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY in .env. Read-only against Supabase; idempotent here."""
+    url, key = env("SUPABASE_URL"), env("SUPABASE_SERVICE_ROLE_KEY")
+    if not (url and key):
+        raise RuntimeError("SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are not set in .env.")
+    shipments = _supabase_get(url, key, "shipments", "id.asc", opener)
+    runs = _supabase_get(url, key, "sync_runs", "started_at.asc", opener)
+    checks = _supabase_get(url, key, "order_checks", "order_number.asc", opener)
+    manual = _supabase_get(url, key, "manual_status", "order_number.asc", opener)
+    rows, problems = _shipment_rows(shipments)
+    repo.ready()
+    existing = repo.load_shipments()
+    new = sum(1 for r in rows if row_key(r) not in existing)
+    good_manual = [m for m in manual if m.get("order_number") and m.get("status") in MANUAL_OK]
+    report: dict[str, Any] = {
+        "source": "supabase",
+        "dry_run": dry_run,
+        "shipments": len(rows),
+        "would_create": new,
+        "would_update": len(rows) - new,
+        "sync_runs": len(runs),
+        "order_checks": len(checks),
+        "manual_status": len(good_manual),
+        "problems": problems,
+    }
+    if dry_run:
+        return report
+    report["backup"] = str(backup_database())
+    before = table_counts()
+    created, updated = repo.save_shipments(rows)
+    known = {r["started_at"] for r in repo.list_runs(1000)}
+    for r in runs:
+        if r.get("started_at") and r["started_at"] not in known:
+            repo.record_run(r)
+    repo.upsert_order_checks(
+        [{**c, "cancelled": bool(c.get("cancelled"))} for c in checks if c.get("order_number")]
+    )
+    for m in good_manual:
+        repo.set_manual_status(
+            str(m["order_number"]),
+            str(m.get("tracking_number") or ""),
+            m["status"],
+            str(m.get("updated_by") or "imported"),
+        )
+    stored = repo.load_shipments()
+    missing = [k for k in (row_key(r) for r in rows) if k not in stored]
+    report.update(
+        {
+            "created": created,
+            "updated": updated,
+            "counts_before": before,
+            "counts_after": table_counts(),
+            "verified": not missing,
+            "missing_after_import": len(missing),
+        }
+    )
+    return report

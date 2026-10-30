@@ -2,6 +2,18 @@
 
 Format: newest first. Types: Added, Changed, Fixed, Removed, Architecture.
 
+## 2026-10-30 (Shipping data capture, second pass)
+
+### Fixed / Added
+- Compared with the owner's live tracker screenshots: the classification logic matches the original dashboard exactly (cross-checked against the original JavaScript on the same file: identical counts), so the differences came from data. The delivered `shipments.json` is a 17 Oct snapshot (the newer zip's copy is byte-identical), and the live dashboard also reads Supabase tables that were not in either zip.
+- Ported the newer tracker code: order total / currency on every shipment (value at risk), order checks (Shopify note, fulfilment and financial status) saved on each sync, cancelled / refunded orders left out, hourly refresh when credentials are set, the daily alert digest (`alerts.py`, manual `POST /api/shipping/alerts/send`; needs SMTP in `.env`, nothing is scheduled).
+- `scripts/import_shipping_data.py --from-supabase`: read-only copy of shipments, sync runs, order checks and manual status from Supabase (needs `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` in `.env`; dry run, backup and verification as before). Schema version 2 adds the new columns to existing databases.
+- Overview: "Since your last visit" banner, Print summary, a 7 / 30 day / all-dates range for the weekly chart, and a Delivered link.
+- Tests: 12 new (order totals, order checks, schema upgrade, Supabase import with a fake server, alert digest).
+
+### Not done
+- Command palette (Ctrl+K), notifications bell and the dark theme toggle from the original dashboard; the live Supabase data itself (needs the owner's credentials or exports).
+
 ## 2026-10-30 (Shipping module)
 
 ### Added
