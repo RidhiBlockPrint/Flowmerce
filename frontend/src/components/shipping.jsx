@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { api, download, useApi, qs } from '../lib/api';
 import { useApp } from '../lib/app';
 import { fmtDateTime, timeAgo } from '../lib/format';
-import { CATS, MANUAL } from '../lib/shipping';
+import { CATS, MANUAL, MARK_ACTION } from '../lib/shipping';
 import { Button, Pill } from './ui';
 import { Drawer, useToast } from './overlays';
 import { Icon } from './Icon';
@@ -123,13 +123,13 @@ export function ShipmentDrawer({ order, keyId, onClose, onChanged }) {
               {s.track_url ? <a className="btn sm" href={s.track_url} target="_blank" rel="noopener noreferrer"><Icon name="external" size="sm"/>Carrier tracking page</a> : null}
               {s.shopify_url ? <a className="btn sm ghost" href={s.shopify_url} target="_blank" rel="noopener noreferrer"><Icon name="external" size="sm"/>Order in Shopify</a> : null}
             </div>
-            {s.tracking_missing ? <div className="callout warn mt-12"><Icon name="alert"/><div>Tracking number is missing in Shopify. Add it on the order in Shopify; the next sync picks it up.</div></div> : null}
+            {s.tracking_missing ? <div className="callout crit mt-12"><Icon name="alert"/><div><b>Tracking number missing in Shopify</b><div>Add the tracking number on this order in Shopify, then sync will pick it up. {s.shopify_url ? <a href={s.shopify_url} target="_blank" rel="noopener noreferrer">Open order in Shopify</a> : null}</div></div></div> : null}
 
             {s.unconfirmed ? (<div className="drawer-section">
                 <h4>Team check</h4>
                 <p className="muted small" style={{ margin: '0 0 8px' }}>{s.manual ? `Marked ${MANUAL[s.manual.status].toLowerCase()} by ${s.manual.updated_by || 'the team'} · ${timeAgo(s.manual.updated_at)}.` : 'Amazon and unknown carriers send no delivery event to Shopify. Open the carrier page, then mark the result here.'}</p>
                 {can('shipping:update') ? (<div className="row-wrap gap-8">
-                    {Object.entries(MANUAL).map(([k, label]) => <Button key={k} size="sm" variant={s.manual?.status === k ? 'primary' : 'secondary'} loading={busy === k} onClick={() => mark(k)}>{label}</Button>)}
+                    {Object.entries(MARK_ACTION).map(([k, label]) => <Button key={k} size="sm" variant={s.manual?.status === k || (!s.manual && k === 'delivered') ? 'primary' : 'secondary'} loading={busy === k} onClick={() => mark(k)}>{label}</Button>)}
                   </div>) : null}
               </div>) : null}
 

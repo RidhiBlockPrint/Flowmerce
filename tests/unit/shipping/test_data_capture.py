@@ -278,3 +278,26 @@ def test_prune_removes_only_rows_supabase_no_longer_has(monkeypatch):
     )  # without --prune nothing is removed
     done = importer.import_from_supabase(opener=opener, prune=True)
     assert done["pruned"] == 1 and set(repo.load_shipments()) == {"f1|T1"}
+
+
+def test_config_accepts_the_original_tracker_setting_names(monkeypatch):
+    from flowmerce.modules.shipping import config as shipping_config
+
+    values = {
+        "SHOPIFY_STORE_DOMAIN": "orig.myshopify.com",
+        "SHOPIFY_CLIENT_ID": "id1",
+        "SHOPIFY_CLIENT_SECRET": "sec1",
+        "ORDERS_SINCE": "2026-08-01",
+        "RED_THRESHOLD_DAYS": "10",
+    }
+    monkeypatch.setattr(shipping_config, "env", lambda k, d="": values.get(k, d))
+    c = shipping_config.load_config()
+    assert (c.shop_domain, c.client_id, c.orders_since, c.red_days) == (
+        "orig.myshopify.com",
+        "id1",
+        "2026-08-01",
+        10,
+    )
+    assert c.has_shopify_credentials
+    values["SHIPPING_SHOPIFY_CLIENT_ID"] = "id2"  # the Shipping name wins when both exist
+    assert shipping_config.load_config().client_id == "id2"

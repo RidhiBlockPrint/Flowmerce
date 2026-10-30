@@ -12,6 +12,8 @@ export const CATS = {
     delivered: { label: 'Delivered', short: 'Delivered', color: '#2f5d8a' },
 };
 export const MANUAL = { delivered: 'Delivered', lost: 'Lost', failed: 'Could not deliver', in_transit: 'Still in transit' };
+/** Button labels for the team check in the shipment drawer (same wording as the original tracker). */
+export const MARK_ACTION = { delivered: 'Mark delivered', lost: 'Mark lost', failed: "Couldn't deliver", in_transit: 'Still in transit' };
 export const MCF_LEVEL = { critical: 'Critical · 10+ days', watch: 'Watch · 7+ days', alert: 'Alert · 5+ days' };
 
 export function isShippingPath(pathname) {

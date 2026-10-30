@@ -5,6 +5,8 @@ const API_ORIGIN = process.env.FLOWMERCE_API_ORIGIN || 'http://127.0.0.1:8787';
 const nextConfig = {
   reactStrictMode: true,
   poweredByHeader: false,
+  // A Shipping sync reads thousands of orders and can run for a few minutes; the default proxy timeout is 30 s.
+  experimental: { proxyTimeout: 600000 },
   async rewrites() {
     return [{ source: '/api/:path*', destination: `${API_ORIGIN}/api/:path*` }];
   },

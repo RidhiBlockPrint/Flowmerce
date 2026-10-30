@@ -119,8 +119,8 @@ def sync_now() -> dict:
             "started_at": _iso(datetime.now(UTC)),
             "completed_at": _iso(datetime.now(UTC)),
             "sync_status": "failed",
-            "error_summary": "Shopify credentials are not set (SHIPPING_SHOPIFY_CLIENT_ID and "
-            "SHIPPING_SHOPIFY_CLIENT_SECRET in .env).",
+            "error_summary": "Shopify credentials are not set (SHOPIFY_CLIENT_ID and SHOPIFY_CLIENT_SECRET, "
+            "or the SHIPPING_ versions of them, in .env).",
         }
         store.record_run(run)
         return run

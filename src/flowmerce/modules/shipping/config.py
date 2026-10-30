@@ -36,18 +36,33 @@ class ShippingConfig:
         return bool(self.shop_domain and (self.token or (self.client_id and self.client_secret)))
 
 
+def _pick(*keys: str, default: str = "") -> str:
+    """First non-empty environment value. Shipping names (SHIPPING_*) win; the delayed-order-tracker's original
+    names (SHOPIFY_CLIENT_ID, ORDERS_SINCE, ...) are accepted too, so an existing .env keeps working."""
+    for k in keys:
+        v = env(k)
+        if v:
+            return v
+    return default
+
+
 def load_config() -> ShippingConfig:
     """Read at call time so tests and a restarted server see current values."""
     return ShippingConfig(
-        shop_domain=env("SHIPPING_SHOPIFY_SHOP", seo_config.brands["ridhi"].shop_domain),
-        client_id=env("SHIPPING_SHOPIFY_CLIENT_ID"),
-        client_secret=env("SHIPPING_SHOPIFY_CLIENT_SECRET"),
-        token=env("SHIPPING_SHOPIFY_ACCESS_TOKEN"),
-        api_version=env("SHIPPING_SHOPIFY_API_VERSION", "2026-01"),
-        orders_since=env("SHIPPING_ORDERS_SINCE", "2026-07-01"),
-        timezone=env("SHIPPING_TIMEZONE", "Asia/Kolkata"),
-        grey_days=int(env("SHIPPING_GREY_DAYS", "2")),
-        yellow_days=int(env("SHIPPING_YELLOW_DAYS", "4")),
-        orange_days=int(env("SHIPPING_ORANGE_DAYS", "6")),
-        red_days=int(env("SHIPPING_RED_DAYS", "9")),
+        shop_domain=_pick(
+            "SHIPPING_SHOPIFY_SHOP",
+            "SHOPIFY_STORE_DOMAIN",
+            default=seo_config.brands["ridhi"].shop_domain,
+        ),
+        client_id=_pick("SHIPPING_SHOPIFY_CLIENT_ID", "SHOPIFY_CLIENT_ID"),
+        client_secret=_pick("SHIPPING_SHOPIFY_CLIENT_SECRET", "SHOPIFY_CLIENT_SECRET"),
+        token=_pick("SHIPPING_SHOPIFY_ACCESS_TOKEN", "SHOPIFY_ACCESS_TOKEN"),
+        # SHOPIFY_API_VERSION is the SEO module's setting, so Shipping does not borrow it.
+        api_version=_pick("SHIPPING_SHOPIFY_API_VERSION", default="2026-01"),
+        orders_since=_pick("SHIPPING_ORDERS_SINCE", "ORDERS_SINCE", default="2026-07-01"),
+        timezone=_pick("SHIPPING_TIMEZONE", "TIMEZONE", default="Asia/Kolkata"),
+        grey_days=int(_pick("SHIPPING_GREY_DAYS", "GREY_THRESHOLD_DAYS", default="2")),
+        yellow_days=int(_pick("SHIPPING_YELLOW_DAYS", "YELLOW_THRESHOLD_DAYS", default="4")),
+        orange_days=int(_pick("SHIPPING_ORANGE_DAYS", "ORANGE_THRESHOLD_DAYS", default="6")),
+        red_days=int(_pick("SHIPPING_RED_DAYS", "RED_THRESHOLD_DAYS", default="9")),
     )
