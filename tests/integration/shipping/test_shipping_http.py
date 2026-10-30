@@ -238,3 +238,8 @@ def test_package_fulfilled_by_hand_is_covered_when_tracked_packages_are_delivere
     assert "#900" not in by_order(app) and "#900" in by_order(app, "covered")
     k = get(app, "/api/shipping/summary").json()["kpis"]
     assert k["covered"] == 1 and get(app, "/api/shipping/shipments?view=covered").status_code == 200
+
+
+def test_status_filter_offers_only_statuses_that_have_listed_shipments(app):
+    statuses = get(app, "/api/shipping/shipments").json()["facets"]["statuses"]
+    assert "delivered" not in statuses and "in_transit" in statuses

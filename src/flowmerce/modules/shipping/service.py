@@ -345,7 +345,9 @@ def list_shipments(
             "statuses": sorted(
                 {
                     r["normalized_tracking_status"]
-                    for r in all_rows_
+                    for r in _active(
+                        all_rows_
+                    )  # delivered shipments are not listed, so "delivered" is not an option
                     if r["normalized_tracking_status"]
                 }
             ),
