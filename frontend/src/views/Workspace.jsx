@@ -5,7 +5,7 @@ import { useNavigate, useParams } from '../lib/nav';
 import { api, useApi, qs } from '../lib/api';
 import { useApp } from '../lib/app';
 import { fmtDate, timeAgo } from '../lib/format';
-import { Button, Card, Empty, ErrorState, Field, LivePill, LoadingBlock, Pill, RoleTag, StatusPill } from '../components/ui';
+import { Button, Card, Empty, ErrorState, Field, LivePill, LoadingBlock, Pill, RoleTag, StatusPill, Paged } from '../components/ui';
 import { useToast } from '../components/overlays';
 import { Icon } from '../components/Icon';
 import { GscKpis, Ga4Kpis } from '../components/metrics';
@@ -89,11 +89,12 @@ export default function Workspace() {
                 <span className="faint small">{stageItems.length} {stageItems.length === 1 ? 'article' : 'articles'}</span>
                 {stageItems.length ? <Link className="btn ghost xs" style={{ marginLeft: 'auto' }} href={`/blogs?status=${activeStage.statuses.join(',')}`}>Open in Blogs <Icon name="arrowRight" size="sm"/></Link> : null}
               </div>
-              {stageItems.length ? (<div className="table-wrap">
+              {stageItems.length ? (<Paged rows={stageItems} resetKey={activeStage.key}>{(pageRows) => (<>
+<div className="table-wrap">
                   <table className="t">
                     <thead><tr><th>Article</th><th>Status</th><th className="hide-md">Next step</th><th className="hide-md">Assignee</th><th className="r">Updated</th></tr></thead>
                     <tbody>
-                      {stageItems.map((a) => (<tr key={a.id} className="clickable" onClick={() => nav(`/blogs/${a.id}`)} tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter') nav(`/blogs/${a.id}`); }}>
+                      {pageRows.map((a) => (<tr key={a.id} className="clickable" onClick={() => nav(`/blogs/${a.id}`)} tabIndex={0} onKeyDown={(e) => { if (e.key === 'Enter') nav(`/blogs/${a.id}`); }}>
                           <td className="title-cell">
                             <Link className="ttl" href={`/blogs/${a.id}`} onClick={(e) => e.stopPropagation()}>{a.title}</Link>
                             <span className="sub">{a.primary_keyword ? `${a.primary_keyword} · ` : ''}/{a.handle}</span>
@@ -105,7 +106,8 @@ export default function Workspace() {
                         </tr>))}
                     </tbody>
                   </table>
-                </div>) : (<Empty icon="blogs" title={`Nothing in “${activeStage.label}”`}>{EMPTY_NOTE[activeStage.key]}</Empty>)}
+                </div>
+</>)}</Paged>) : (<Empty icon="blogs" title={`Nothing in “${activeStage.label}”`}>{EMPTY_NOTE[activeStage.key]}</Empty>)}
             </section>
             {queue.length ? (<Card title="Topics queue" sub={`${queue.length} waiting`} flush actions={<Link className="btn ghost xs" href="/topics">All topics</Link>}>
                 <div className="alert-list">

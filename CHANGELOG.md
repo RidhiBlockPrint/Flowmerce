@@ -2,6 +2,16 @@
 
 Format: newest first. Types: Added, Changed, Fixed, Removed, Architecture.
 
+## 2026-10-30 (Ridhi keyword workbook, read-only)
+
+### Added
+- `modules/seo/services/keyword_file.py` and `GET /api/keyword-file`: read the newest `data/ridhi-keyword-db-*.xlsx` (sheets Keyword DB, New keywords, Opportunities) without writing to the database or the file. Numbers are taken only from the sheet (blank stays blank). Ridhi only.
+- `frontend/src/views/KeywordFile.jsx`: "Ridhi keyword research" section on Topics & keywords (All / Opportunities / New this run, cluster filter, search, volume, KD, Search Console figures, recommended action).
+- `tests/unit/seo/test_keyword_file.py`.
+
+### Validation
+- `pytest -q` 78 passed, `ruff` and `mypy` pass, `npm run build` succeeds; browser check against the real workbook showed 170 keywords (44 opportunities, 55 new).
+
 ## 2026-10-29 (Next.js JavaScript frontend, one launcher)
 
 ### Changed

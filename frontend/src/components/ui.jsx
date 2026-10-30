@@ -146,3 +146,27 @@ export function RoleTag({ role }) {
     const label = role === 'seo_manager' ? 'SEO Manager' : role === 'reviewer' ? 'Reviewer' : role === 'admin' ? 'Admin' : role;
     return <span className="pill outline">{label}</span>;
 }
+
+/** Rows shown at a time in every list; the rest are on the next pages. */
+export const PAGE_SIZE = 10;
+/**
+ * Shows `size` rows at a time with Previous / Next below. `children` receives the rows of the current page.
+ * `resetKey` returns the list to page 1 when a filter or search changes.
+ */
+export function Paged({ rows, size = PAGE_SIZE, resetKey = '', children }) {
+    const [page, setPage] = useState(0);
+    useEffect(() => { setPage(0); }, [resetKey]);
+    const pages = Math.max(1, Math.ceil(rows.length / size));
+    const cur = Math.min(page, pages - 1);
+    const slice = rows.slice(cur * size, cur * size + size);
+    return (<>
+      {children(slice)}
+      {rows.length > size ? (<div className="card-foot pager">
+          <span className="muted small">{cur * size + 1}–{Math.min((cur + 1) * size, rows.length)} of {rows.length}</span>
+          <span className="spacer"/>
+          <Button size="sm" icon="chevronLeft" disabled={cur === 0} onClick={() => setPage(cur - 1)}>Previous</Button>
+          <span className="small muted">Page {cur + 1} of {pages}</span>
+          <Button size="sm" disabled={cur >= pages - 1} onClick={() => setPage(cur + 1)}>Next <Icon name="chevronRight" size="sm"/></Button>
+        </div>) : null}
+    </>);
+}

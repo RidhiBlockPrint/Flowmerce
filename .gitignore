@@ -25,3 +25,6 @@ frontend/out/
 logs/*
 !logs/.gitkeep
 *.log
+
+# Staging area for external projects awaiting integration (may hold real data and secrets)
+incoming/

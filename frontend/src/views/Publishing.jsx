@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { api, useApi, qs } from '../lib/api';
 import { useApp, useBrandParam } from '../lib/app';
 import { fmtDateTime, timeAgo } from '../lib/format';
-import { BrandTag, Button, Card, Empty, ErrorState, LoadingBlock, PageHead, Pill } from '../components/ui';
+import { BrandTag, Button, Card, Empty, ErrorState, LoadingBlock, PageHead, Pill, Paged } from '../components/ui';
 import { useToast } from '../components/overlays';
 import { Icon } from '../components/Icon';
 import { AuthorizeDialog, MODE_LABEL, RejectDialog } from '../components/publish';
@@ -65,11 +65,12 @@ export default function Publishing() {
           </div>
 
           <Card title="History" flush>
-            {history.length ? (<div className="table-wrap">
+            {history.length ? (<Paged rows={history} resetKey={brand}>{(pageRows) => (<>
+<div className="table-wrap">
                 <table className="t compact">
                   <thead><tr><th>Article</th>{!brand ? <th className="hide-sm">Brand</th> : null}<th>Mode</th><th>Outcome</th><th className="hide-md">Requested</th><th className="hide-md">Decided</th></tr></thead>
                   <tbody>
-                    {history.map((r) => (<tr key={r.id}>
+                    {pageRows.map((r) => (<tr key={r.id}>
                         <td className="title-cell"><Link className="ttl" href={`/blogs/${r.article_id}?tab=publish`}>{r.title}</Link><span className="sub">v{r.version}</span></td>
                         {!brand ? <td className="hide-sm"><BrandTag id={r.brand_id} brands={me.brands}/></td> : null}
                         <td className="small">{MODE_LABEL[r.mode]}</td>
@@ -79,7 +80,8 @@ export default function Publishing() {
                       </tr>))}
                   </tbody>
                 </table>
-              </div>) : <div className="card-body muted small">No completed requests yet.</div>}
+              </div>
+</>)}</Paged>) : <div className="card-body muted small">No completed requests yet.</div>}
           </Card>
         </div>) : null}
       {auth ? <AuthorizeDialog req={auth.req} retry={auth.retry} onClose={() => setAuth(null)} onDone={() => { setAuth(null); q.reload(); }}/> : null}

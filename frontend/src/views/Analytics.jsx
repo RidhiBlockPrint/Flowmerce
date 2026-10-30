@@ -5,7 +5,7 @@ import { useNavigate, useSearchParams } from '../lib/nav';
 import { api, useApi, qs, download } from '../lib/api';
 import { useApp, useBrandParam } from '../lib/app';
 import { fmtCompact, fmtDate, fmtInt, fmtPct, fmtPos, fmtSeconds, pctChange } from '../lib/format';
-import { Button, Card, Delta, ErrorState, LoadingBlock, PageHead, SourceBadge, Tabs, BrandTag } from '../components/ui';
+import { Button, Card, Delta, ErrorState, LoadingBlock, PageHead, SourceBadge, Tabs, BrandTag, Paged } from '../components/ui';
 import { useToast } from '../components/overlays';
 import { Icon } from '../components/Icon';
 import { LineChart, BarList } from '../components/charts';
@@ -120,17 +120,19 @@ function PageTable({ rows, empty }) {
     const nav = useNavigate();
     if (!rows.length)
         return <div className="card-body muted small">{empty}</div>;
-    return (<div className="table-wrap">
+    return (<Paged rows={rows} resetKey={rows.length}>{(pageRows) => (<>
+<div className="table-wrap">
       <table className="t compact">
         <thead><tr><th>Page</th><th className="r">Clicks</th><th className="r">Before</th><th className="r">Change</th></tr></thead>
         <tbody>
-          {rows.map((p) => (<tr key={p.brand + p.page} className={p.article ? 'clickable' : ''} onClick={() => p.article && nav(`/blogs/${p.article.id}?tab=performance`)}>
+          {pageRows.map((p) => (<tr key={p.brand + p.page} className={p.article ? 'clickable' : ''} onClick={() => p.article && nav(`/blogs/${p.article.id}?tab=performance`)}>
               <td className="title-cell"><span className="ttl"><span className={`brand-dot ${p.brand}`}/> {p.article?.title ?? p.page}</span></td>
               <td className="r">{fmtInt(p.clicks)}</td><td className="r">{fmtInt(p.prevClicks)}</td><td className="r"><Delta value={pctChange(p.clicks, p.prevClicks)}/></td>
             </tr>))}
         </tbody>
       </table>
-    </div>);
+    </div>
+</>)}</Paged>);
 }
 function Sources({ brands }) {
     const kinds = [...new Set(brands.filter((b) => b.source.kind).map((b) => b.source.kind))];
@@ -181,14 +183,15 @@ function ArticlesTab() {
     const rows = brands.flatMap((b) => b.rows.map((x) => ({ ...x, brand: b.brand }))).sort((a, b) => ((a[sort.k] ?? -1) > (b[sort.k] ?? -1) ? 1 : -1) * sort.d);
     const Th = ({ k, children, cls = '' }) => <th className={`r sortable ${cls}`} onClick={() => setSort({ k, d: sort.k === k ? -sort.d : -1 })}>{children}{sort.k === k ? <Icon name={sort.d === 1 ? 'arrowUp' : 'arrowDown'} size="sm"/> : null}</th>;
     return (<Card flush title="Published articles" sub="Columns stay blank (—) where a source has no data; nothing is estimated." actions={<span className="row-wrap">{brands.map((b) => <span key={b.brand} className="row xs"><span className={`brand-dot ${b.brand}`}/>GSC <SourceBadge source={b.sources.gsc}/> GA4 <SourceBadge source={b.sources.ga4}/></span>)}</span>}>
-      <div className="table-wrap">
+      <Paged rows={rows} resetKey={`${sort.k}|${sort.d}`}>{(pageRows) => (<>
+<div className="table-wrap">
         <table className="t compact">
           <thead>
             <tr className="group-head"><th /><th colSpan={4} style={{ color: 'var(--info)' }}>Search Console</th><th colSpan={3} className="hide-sm" style={{ color: 'var(--ok)' }}>GA4</th></tr>
             <tr><th>Article</th><Th k="clicks">Clicks</Th><Th k="impressions">Impr.</Th><Th k="ctr" cls="hide-sm">CTR</Th><Th k="position">Pos.</Th><Th k="sessions" cls="hide-sm">Sessions</Th><Th k="engagementRate" cls="hide-sm">Engaged</Th><Th k="keyEvents" cls="hide-sm">Key ev.</Th></tr>
           </thead>
           <tbody>
-            {rows.map((a) => (<tr key={a.id} className="clickable" onClick={() => nav(`/blogs/${a.id}?tab=performance`)}>
+            {pageRows.map((a) => (<tr key={a.id} className="clickable" onClick={() => nav(`/blogs/${a.id}?tab=performance`)}>
                 <td className="title-cell"><span className="ttl">{a.title}</span><span className="sub row"><BrandTag id={a.brand} brands={me.brands}/> {fmtDate(a.published_at)}</span></td>
                 <td className="r">{fmtInt(a.clicks)}</td><td className="r">{fmtCompact(a.impressions)}</td><td className="r hide-sm">{fmtPct(a.ctr)}</td><td className="r">{fmtPos(a.position)}</td>
                 <td className="r hide-sm">{fmtInt(a.sessions)}</td><td className="r hide-sm">{fmtPct(a.engagementRate)}</td><td className="r hide-sm">{fmtInt(a.keyEvents)}</td>
@@ -197,6 +200,7 @@ function ArticlesTab() {
           </tbody>
         </table>
       </div>
+</>)}</Paged>
     </Card>);
 }
 function CompareTab() {

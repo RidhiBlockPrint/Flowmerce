@@ -1,7 +1,7 @@
 'use client';
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import { useNavigate } from '../lib/nav';
 import { Icon, LogoMark } from './Icon';
 import { Button, Menu, BrandTag } from './ui';
@@ -87,11 +87,26 @@ export function Shell({ children }) {
                 </Button>) : null}
             </div>
           </header>
-          <main className="content" id="main" tabIndex={-1}>{children}</main>
+          <main className="content" id="main" tabIndex={-1}>
+            {loc.pathname !== '/' ? <div className="page-back"><BackButton /></div> : null}
+            {children}
+          </main>
         </div>
       </div>
       {tasksOpen && showTasks ? <TasksDrawer tasks={tasks.data ?? []} loading={tasks.loading} onClose={() => setTasksOpen(false)}/> : null}
     </>);
+}
+/** Goes back one page; when this tab has no earlier page (opened directly), goes to the parent section or Home. */
+function BackButton() {
+    const router = useRouter();
+    const pathname = usePathname() ?? '/';
+    const back = () => {
+        if (window.history.length > 1)
+            router.back();
+        else
+            router.push(pathname.split('/').length > 2 ? `/${pathname.split('/')[1] === 'workspace' ? 'seo' : pathname.split('/')[1]}` : '/');
+    };
+    return <Button variant="ghost" size="sm" icon="chevronLeft" onClick={back} aria-label="Go back" title="Back to the previous page">Back</Button>;
 }
 function NavItem({ to, icon, children, count, alert, end }) {
     const pathname = usePathname() ?? '/';

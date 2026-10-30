@@ -5,9 +5,10 @@ import { useNavigate, useSearchParams } from '../lib/nav';
 import { api, useApi, qs, download } from '../lib/api';
 import { useApp, useBrandParam } from '../lib/app';
 import { fmtDate, fmtInt, timeAgo } from '../lib/format';
-import { BrandTag, Button, Empty, ErrorState, Field, PageHead, Pill, Skeleton, Tabs } from '../components/ui';
+import { BrandTag, Button, Empty, ErrorState, Field, PageHead, Pill, Skeleton, Tabs, Paged } from '../components/ui';
 import { Dialog, useToast } from '../components/overlays';
 import { Icon } from '../components/Icon';
+import KeywordFile from './KeywordFile';
 const TOPIC_TONE = { proposed: 'neutral', validated: 'info', approved: 'ok', rejected: 'crit', in_production: 'accent', published: 'ok' };
 const INTENTS = ['informational', 'commercial', 'transactional', 'navigational'];
 export default function Topics() {
@@ -86,7 +87,8 @@ function TopicList() {
       </div>
       <ErrorState error={list.error} onRetry={list.reload}/>
       <div className="card flush">
-        <div className="table-wrap">
+        <Paged rows={list.data ?? []} resetKey={`${brand}|${status}|${missing}|${q}`}>{(pageRows) => (<>
+<div className="table-wrap">
           <table className="t">
             <thead>
               <tr>
@@ -95,7 +97,7 @@ function TopicList() {
             </thead>
             <tbody>
               {list.loading && !list.data ? Array.from({ length: 5 }, (_, i) => <tr key={i}><td colSpan={8}><Skeleton h={14} w={`${70 - i * 8}%`}/></td></tr>) : null}
-              {list.data?.map((t) => (<tr key={t.id} style={focus === t.id ? { background: 'var(--accent-soft)' } : undefined}>
+              {pageRows.map((t) => (<tr key={t.id} style={focus === t.id ? { background: 'var(--accent-soft)' } : undefined}>
                   <td className="title-cell">
                     <a href="#" className="ttl" onClick={(e) => { e.preventDefault(); setEditing(t); }}>{t.title}</a>
                     <span className="sub">{t.primary_keyword}{t.secondary_keywords ? ` · ${t.secondary_keywords}` : ''}</span>
@@ -124,6 +126,7 @@ function TopicList() {
             </tbody>
           </table>
         </div>
+</>)}</Paged>
         {list.data && !list.data.length ? (<Empty icon="topics" title="No topics here" action={can('topic:write') ? <Button variant="primary" icon="plus" onClick={() => setEditing('new')}>New topic</Button> : null}>
             Run Topic research under Automation to have Claude propose ideas, import a topics workbook, or add one by hand.
           </Empty>) : null}
@@ -187,6 +190,7 @@ function KeywordList() {
     const [adding, setAdding] = useState(false);
     const toast = useToast();
     return (<>
+      {brand !== 'cpc' ? <KeywordFile /> : null}
       <div className="callout info mb-12"><Icon name="info"/><div>Keyword volumes cannot be fetched from Google's APIs without an Ads account, so they live here as <b>manually imported</b> data. Import a workbook from your keyword tool in <Link href="/data">Data &amp; reports</Link>. Rows older than 6 months are flagged.</div></div>
       <div className="toolbar">
         <span className="muted small">{list.data ? `${list.data.length} keywords` : ''}</span>
@@ -196,11 +200,12 @@ function KeywordList() {
       </div>
       <ErrorState error={list.error} onRetry={list.reload}/>
       <div className="card flush">
-        <div className="table-wrap">
+        <Paged rows={list.data ?? []} resetKey={brand}>{(pageRows) => (<>
+<div className="table-wrap">
           <table className="t">
             <thead><tr><th>Keyword</th>{!brand ? <th>Brand</th> : null}<th className="r">Volume</th><th className="r">KD</th><th className="hide-sm">Intent</th><th className="hide-sm">Source</th><th>Data date</th></tr></thead>
             <tbody>
-              {list.data?.map((k) => {
+              {pageRows.map((k) => {
             const stale = k.source_date && Date.now() - Date.parse(k.source_date) > 180 * 86400000;
             return (<tr key={k.id}>
                     <td className="strong">{k.keyword}</td>
@@ -215,6 +220,7 @@ function KeywordList() {
             </tbody>
           </table>
         </div>
+</>)}</Paged>
         {list.data && !list.data.length ? <Empty icon="target" title="No keyword data yet">Download the keywords template from Data &amp; reports, fill it from your keyword tool and import it.</Empty> : null}
       </div>
       {adding ? <KeywordDialog onClose={() => setAdding(false)} onSaved={() => { setAdding(false); list.reload(); }}/> : null}

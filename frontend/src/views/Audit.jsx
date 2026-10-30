@@ -3,7 +3,7 @@ import { Fragment, useEffect, useState } from 'react';
 import { api, qs, download } from '../lib/api';
 import { useApp, useBrandParam } from '../lib/app';
 import { fmtDateTime } from '../lib/format';
-import { Button, Empty, ErrorState, PageHead, BrandTag } from '../components/ui';
+import { Button, Empty, ErrorState, PageHead, BrandTag, Paged } from '../components/ui';
 import { useToast } from '../components/overlays';
 import { Icon } from '../components/Icon';
 const GROUPS = [['', 'All actions'], ['article', 'Content edits & reviews'], ['publish', 'Publishing'], ['shopify', 'Shopify drafts'], ['data', 'Imports & exports'], ['integration', 'Integration failures & tests'], ['workflow', 'Automation'], ['auth', 'Sign-ins'], ['user', 'Users']];
@@ -42,11 +42,12 @@ export default function Audit() {
       </div>
       <ErrorState error={error} onRetry={() => load()}/>
       <div className="card flush">
-        <div className="table-wrap">
+        <Paged rows={rows} resetKey={`${brand}|${action}|${user}`}>{(pageRows) => (<>
+<div className="table-wrap">
           <table className="t compact">
             <thead><tr><th>Time</th><th>Who</th><th>Action</th>{!brand ? <th className="hide-sm">Brand</th> : null}<th>Summary</th><th /></tr></thead>
             <tbody>
-              {rows.map((r) => (<Fragment key={r.id}>
+              {pageRows.map((r) => (<Fragment key={r.id}>
                   <tr className="clickable" onClick={() => setOpen(open === r.id ? null : r.id)}>
                     <td className="nowrap small">{fmtDateTime(r.ts)}</td>
                     <td className="small">{r.user_email ?? 'system'}</td>
@@ -62,6 +63,7 @@ export default function Audit() {
             </tbody>
           </table>
         </div>
+</>)}</Paged>
         {!loading && !rows.length ? <Empty icon="audit" title="No entries match">Try another action type.</Empty> : null}
         {more && rows.length ? <div className="card-foot"><Button size="sm" loading={loading} onClick={() => load(rows[rows.length - 1].id)}>Load older entries</Button></div> : null}
       </div>

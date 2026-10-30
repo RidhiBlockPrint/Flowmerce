@@ -21,7 +21,7 @@ from .integrations.google import ga4_configured, ga4_report, gsc_configured, gsc
 from .integrations.shopify_public import fetch_public_articles
 from .integrations.status import all_statuses, mark_error, mark_success
 from .permissions import PERMISSIONS, ROLE_LABELS, is_role, perms_for
-from .services import analytics, articles, excel, home, publishing, workflow
+from .services import analytics, articles, excel, home, keyword_file, publishing, workflow
 from .services.brands import all_brands, brand, brand_public, update_brand_settings
 from .services.demo import clear_demo, demo_loaded, load_demo
 from .services.sync import products_for, sync_ga4, sync_gsc, sync_shopify
@@ -499,6 +499,13 @@ def keywords(request: Request):
     if b:
         return all_rows("SELECT * FROM keywords WHERE brand_id = ? ORDER BY COALESCE(search_volume, -1) DESC LIMIT 1000", b)
     return all_rows("SELECT * FROM keywords ORDER BY COALESCE(search_volume, -1) DESC LIMIT 1000")
+
+
+@api.get("/keyword-file")
+def keyword_file_data(request: Request):
+    """Read-only view of the Ridhi keyword research workbook in data/ (never written to the database)."""
+    auth.require_perm(request, "view")
+    return keyword_file.load()
 
 
 @api.post("/keywords")

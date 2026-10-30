@@ -17,7 +17,7 @@ const GROUPS = [
     { key: 'published', label: 'Published', statuses: 'published' },
     { key: 'failed', label: 'Failed', statuses: 'failed' },
 ];
-const PAGE = 25;
+const PAGE = 10;
 export default function Blogs() {
     const { can, me } = useApp();
     const brand = useBrandParam();

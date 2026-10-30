@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { api, useApi, qs } from '../lib/api';
 import { useApp, useBrandParam } from '../lib/app';
 import { fmtDateTime, timeAgo } from '../lib/format';
-import { Button, Card, ErrorState, LoadingBlock, PageHead, Pill, BrandTag } from '../components/ui';
+import { Button, Card, ErrorState, LoadingBlock, PageHead, Pill, BrandTag, Paged } from '../components/ui';
 import { Dialog, useToast } from '../components/overlays';
 import { Icon } from '../components/Icon';
 const STATE = {
@@ -108,11 +108,12 @@ export default function Automation() {
             </section>))}
 
           <Card title="Run history" sub="Runs started here, by the background refresh, or reported by external agents through the webhook" flush>
-            <div className="table-wrap">
+            <Paged rows={q.data.runs} resetKey={brand}>{(pageRows) => (<>
+<div className="table-wrap">
               <table className="t compact">
                 <thead><tr><th>Started</th><th>Stage</th>{!brand ? <th className="hide-sm">Brand</th> : null}<th>Result</th><th className="hide-md">Message</th><th className="hide-sm">By</th><th /></tr></thead>
                 <tbody>
-                  {q.data.runs.map((r) => (<tr key={r.id}>
+                  {pageRows.map((r) => (<tr key={r.id}>
                       <td className="nowrap small" title={r.finished_at ? `finished ${fmtDateTime(r.finished_at)}` : ''}>{fmtDateTime(r.started_at)}</td>
                       <td className="small">{r.stage.replace(/_/g, ' ')}</td>
                       {!brand ? <td className="hide-sm"><BrandTag id={r.brand_id} brands={me.brands}/></td> : null}
@@ -125,6 +126,7 @@ export default function Automation() {
                 </tbody>
               </table>
             </div>
+</>)}</Paged>
           </Card>
         </div>) : null}
       {pause ? <PauseDialog brand={pause} onClose={() => setPause(null)} onDone={() => { setPause(null); q.reload(); }}/> : null}
