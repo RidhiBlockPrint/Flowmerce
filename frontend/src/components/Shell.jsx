@@ -10,12 +10,14 @@ import { api, useApi, qs } from '../lib/api';
 import { useApp, presetRange } from '../lib/app';
 import { fmtDate, timeAgo } from '../lib/format';
 import { isSeoPath } from '../lib/routes';
+import { isShippingPath } from '../lib/shipping';
 export function Shell({ children }) {
     const { me, can, brand } = useApp();
     const [navOpen, setNavOpen] = useState(false);
     const [tasksOpen, setTasksOpen] = useState(false);
     const loc = { pathname: usePathname() ?? '/' };
     const inSeo = isSeoPath(loc.pathname);
+    const inShipping = isShippingPath(loc.pathname);
     // Tasks are SEO & Blog work for the signed-in role, so they only matter on SEO pages and on Home.
     // /publishing only feeds the SEO sidebar count. Neither request is made anywhere else (a null path skips the request).
     const showTasks = inSeo || loc.pathname === '/';
@@ -69,6 +71,15 @@ export function Shell({ children }) {
                   {can('audit:view') ? <NavItem to="/audit" icon="audit">Audit log</NavItem> : null}
                 </div>) : null}
             </div>
+            <div className="nav-group">
+              <div className="nav-label">Shipping</div>
+              <NavItem to="/shipping" icon="send" end>Shipping overview</NavItem>
+              {inShipping ? (<div className="nav-sub" role="group" aria-label="Shipping pages">
+                  <NavItem to="/shipping/shipments" icon="inbox">Shipments</NavItem>
+                  <NavItem to="/shipping/analytics" icon="analytics">Analytics</NavItem>
+                  <NavItem to="/shipping/checks" icon="checkCircle">Checks</NavItem>
+                </div>) : null}
+            </div>
           </nav>
           <div className="sidebar-foot">
             <LocalOperatorBadge />
@@ -77,7 +88,7 @@ export function Shell({ children }) {
         <div className="main">
           <header className="topbar">
             <Button className="menu-btn" variant="ghost" iconOnly icon="menu" aria-label="Open navigation" onClick={() => setNavOpen(true)}/>
-            <BrandSwitch />
+            {!inShipping ? <BrandSwitch /> : null}
             {inSeo ? <GlobalSearch /> : null}
             <div className="row" style={{ marginLeft: 'auto' }}>
               {inSeo ? <RangePicker /> : null}

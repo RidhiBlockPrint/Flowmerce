@@ -75,7 +75,6 @@ def test_unfinished_pages_are_not_mounted() -> None:
 def test_no_planned_destinations_in_navigation() -> None:
     nav = (FRONTEND / "src" / "lib" / "routes.js").read_text(encoding="utf-8")
     for path in (
-        "/shipping",
         "/meta",
         "/creative",
         "/landing",

@@ -18,6 +18,7 @@ PERMISSIONS: dict[str, str] = {
     "users:manage": "Add users and change roles",
     "audit:view": "Read the audit log",
     "demo:manage": "Load or clear demo fixtures",
+    "shipping:update": "Mark shipments checked and add shipping notes",
 }
 
 ROLE_PERMS: dict[str, list[str]] = {

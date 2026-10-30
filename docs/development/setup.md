@@ -60,6 +60,16 @@ Credentials and options are in `.env` (see the SEO section of `.env.example`). T
 
 **Local operator mode (no sign-in).** The dashboard opens without credentials. The web interface listens on `127.0.0.1` only, and the API answers only connections from this computer (loopback addresses); any other address gets HTTP 403 for every API path, even if the API's `HOST` is changed. Run it on `127.0.0.1` (the default) and do not expose it to a network or put a proxy or tunnel in front of it. The single exception is `POST /api/hooks/workflow`, the external workflow webhook, which has its own `X-Workflow-Secret` check and is reachable from other computers if the API is reachable. Local requests act as the first active administrator record, which the server creates at startup if none exists (no password is generated, shown or saved; `ADMIN_PASSWORD` is ignored). The old `/api/auth/login` and `/api/auth/password` endpoints answer 410. An existing `data/initial-admin.txt` is not deleted and is no longer used. Scripts that call the API from this computer still need the `X-Requested-With: blog-ops` header for mutating requests. See [ADR 0005](../decisions/0005-local-operator-mode.md).
 
+**Shipping module.** Import the existing shipments once (safe to repeat; the database is backed up first):
+
+```powershell
+python scripts\import_shipping_data.py --dry-run     # report only
+python scripts\import_shipping_data.py               # imports data\shipments.json
+python scripts\import_shipping_data.py --manual manual_status.csv --checks order_checks.csv   # when you have those exports
+```
+
+To read fresh orders, create a Shopify Dev Dashboard app with the read-only scopes `read_orders` and `read_fulfillments`, install it on the store, and put its Client ID and secret in `.env` (`SHIPPING_SHOPIFY_CLIENT_ID`, `SHIPPING_SHOPIFY_CLIENT_SECRET`; see `.env.example`). Then use **Sync now** on the Shipping pages; the background scheduler also syncs every 12 hours once credentials are set. Nothing is ever written to Shopify.
+
 **Moving from the original blog-ops folder** (done 2026-10-29; the folder no longer exists): `.env`, `data/` and `backups/` now live in the repository root. Both are git-ignored; keep your own copy of `.env` and back up `data/` and `backups/`.
 
 **Building the UI** (needs Node.js; `frontend\.next` and `frontend\node_modules` are git-ignored, so a fresh clone must install and build): from `frontend\` run `npm ci` (installs exactly what `package-lock.json` specifies) and `npm run build` (the Next.js build). There is no TypeScript type check: the frontend is JavaScript/JSX only. There is no frontend lint or test suite yet; `python scripts\ci_smoke.py --web` starts the built frontend and checks its routes.

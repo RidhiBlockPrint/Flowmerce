@@ -142,6 +142,37 @@ export function BarList({ rows, format = fmtCompact, empty = 'Nothing to show' }
         })}
     </div>);
 }
+/** Ring chart: `items` are { label, value, color }. Clicking a slice calls onSelect(item). */
+export function Donut({ items, center, sub, size = 168, ariaLabel, onSelect }) {
+    const total = items.reduce((a, i) => a + i.value, 0);
+    const r = 15.9155, c = 2 * Math.PI * r;
+    let offset = 0;
+    return (<div className="donut" style={{ width: size, height: size }}>
+      <svg viewBox="0 0 42 42" role="img" aria-label={ariaLabel ?? 'Distribution'}>
+        <circle cx="21" cy="21" r={r} fill="none" stroke="var(--line)" strokeWidth="5"/>
+        {total ? items.filter((i) => i.value > 0).map((i) => {
+            const len = (i.value / total) * c;
+            const el = (<circle key={i.label} cx="21" cy="21" r={r} fill="none" stroke={i.color} strokeWidth="5" strokeDasharray={`${len} ${c - len}`} strokeDashoffset={-offset} transform="rotate(-90 21 21)" style={onSelect ? { cursor: 'pointer' } : undefined} onClick={onSelect ? () => onSelect(i) : undefined}><title>{i.label}: {i.value}</title></circle>);
+            offset += len;
+            return el;
+        }) : null}
+      </svg>
+      <div className="donut-center"><b>{center}</b>{sub ? <small>{sub}</small> : null}</div>
+    </div>);
+}
+/** Vertical bars: `items` are { label, value, color? }. */
+export function Columns({ items, height = 170, ariaLabel, color = 'var(--ridhi)' }) {
+    const max = Math.max(...items.map((i) => i.value), 1);
+    if (!items.length)
+        return <div className="muted small" style={{ padding: '12px 8px' }}>Nothing to show</div>;
+    return (<div className="columns" style={{ height }} role="img" aria-label={ariaLabel ?? 'Bar chart'}>
+      {items.map((i) => (<div key={i.label} className="col-bar" title={`${i.label}: ${i.value}`}>
+          <span className="col-val">{i.value}</span>
+          <span className="col-fill" style={{ height: `${Math.max(3, (i.value / max) * 100)}%`, background: i.color ?? color }}/>
+          <span className="col-lab">{i.label}</span>
+        </div>))}
+    </div>);
+}
 /** Ring used for the SEO score. */
 export function ScoreRing({ value }) {
     const r = 19, c = 2 * Math.PI * r;

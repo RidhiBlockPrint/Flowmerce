@@ -2,6 +2,21 @@
 
 Format: newest first. Types: Added, Changed, Fixed, Removed, Architecture.
 
+## 2026-10-30 (Shipping module)
+
+### Added
+- **Shipping module** integrated from the delayed-order-tracker project ([ADR 0007](docs/decisions/0007-shipping-module-and-database.md)): `src/flowmerce/modules/shipping/` (repo, schema, aging, normalize, carriers, shopify, sync, service, importer, api), endpoints under `/api/shipping/...`, and the `/shipping` pages (overview, shipments, analytics, checks) in Flowmerce's design with a shipment drawer, quick views, filters, server-side paging, CSV exports (escalation, verify, filtered), team check for Amazon/unknown carriers, notes and a Home card.
+- Five `shipping_*` tables in the Flowmerce SQLite database (SEO schema untouched); `scripts/import_shipping_data.py` (dry run, backup, verification). 3,524 shipments and 5 sync runs imported and verified.
+- Read-only Shopify sync (`read_orders`, `read_fulfillments`, client-credentials token); scheduler refresh every 12 hours when credentials exist; `shipping:update` permission; `SHIPPING_*` settings in `.env.example`.
+- Ported tracker tests (42) and new HTTP tests; `ci_smoke.py` checks the shipping API and routes.
+
+### Changed
+- Lost on purpose: the Supabase login, the GitHub Actions daily trigger and the Chart.js CDN; notes moved from browser storage to the database. Ruff and mypy exceptions added for the ported code (roadmap B8).
+
+### Validation
+- `pytest -q` 129 passed; `ruff check .` and `mypy` pass; `npm run build` succeeds; `ci_smoke.py --web` all 42 checks pass; browser check on the real imported data (overview, shipments with filters, paging and drawer, analytics, checks).
+- **Not verified:** a live Shopify sync, `manual_status` / `order_checks` data, Supabase, and the GitHub CI run.
+
 ## 2026-10-30 (Ridhi keyword workbook, read-only)
 
 ### Added

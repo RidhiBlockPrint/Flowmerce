@@ -12,6 +12,8 @@ export const MODULES = [
 
 /** Links on Home's quick navigation. */
 export const QUICK_LINKS = [
+  { to: '/shipping', label: 'Shipping overview', icon: 'send' },
+  { to: '/shipping/shipments', label: 'Shipments', icon: 'send' },
   { to: '/seo', label: 'SEO & Blog Content', icon: 'blogs' },
   { to: '/blogs', label: 'Blogs', icon: 'blogs' },
   { to: '/topics', label: 'Topics & keywords', icon: 'topics' },

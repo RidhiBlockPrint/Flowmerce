@@ -7,6 +7,7 @@ import threading
 import time
 
 from ..config import BRAND_IDS
+from ...shipping.sync import tick as shipping_tick
 from ..util import ms_since
 from .runs import last_run
 from .workflow import is_paused, run_stage
@@ -17,6 +18,10 @@ _started = False
 
 
 def tick() -> None:
+    try:
+        shipping_tick()  # read-only Shopify sync for the Shipping module, when its credentials are set
+    except Exception as e:  # noqa: BLE001
+        print("shipping sync failed:", e)
     for b in BRAND_IDS:
         if is_paused(b):
             continue

@@ -8,6 +8,7 @@ import { BrandTag, Card, Empty, ErrorState, LoadingBlock, PageHead, Pill, Source
 import { Icon } from '../components/Icon';
 import { Kpi } from '../components/metrics';
 import { ListCard, ListRow, ModuleCard, brandLabel } from '../components/home';
+import { ShippingHomeCard } from '../components/shipping';
 const MODULE_NAME = Object.fromEntries(MODULES.map((m) => [m.id, m.label]));
 const MODULE_ICON = Object.fromEntries(MODULES.map((m) => [m.id, m.icon]));
 const SEVERITY = {
@@ -61,6 +62,7 @@ export default function Home() {
           <h2 className="section-title">Projects</h2>
           <div className="module-grid">
             {MODULES.map((m) => (<ModuleCard key={m.id} module={m} latest={data.reports.find((r) => r.module === m.id)} {...common}/>))}
+            <ShippingHomeCard />
           </div>
 
           <h2 className="section-title">

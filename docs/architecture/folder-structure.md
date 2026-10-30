@@ -11,6 +11,7 @@ Flowmerce/
 │   ├── config/               settings loading and validation
 │   ├── core/                 cross-cutting foundations (logging)
 │   └── modules/
+│       ├── shipping/         Shipping module: repo, schema, aging, normalize, carriers, shopify, sync, service, importer, api
 │       └── seo/              SEO & Blog module (migrated from blog-ops)
 │           ├── api.py app.py main.py cli.py config.py db.py auth.py permissions.py audit.py util.py
 │           ├── services/     business logic (articles, publishing, workflow, sync, analytics, excel, ...)

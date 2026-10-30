@@ -13,6 +13,8 @@ from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
+from ..shipping import repo as shipping_repo
+from ..shipping.api import shipping
 from .api import api
 from .audit import audit
 from .auth import LOCAL_OPERATOR_PASSWORD_HASH, is_loopback_client, local_operator
@@ -72,6 +74,7 @@ def create_app() -> FastAPI:
         return JSONResponse({"error": f"Something went wrong on the server (ref {ref}). {str(e)[:300]}".strip(), "code": "server_error"}, status_code=500)
 
     app.include_router(api)
+    app.include_router(shipping)
 
     @app.api_route("/api/{rest:path}", methods=["GET", "POST", "PATCH", "PUT", "DELETE"])
     def api_not_found(rest: str):
@@ -101,6 +104,7 @@ def bootstrap_admin() -> None:
 
 def startup(with_scheduler: bool = True) -> FastAPI:
     open_db()
+    shipping_repo.ready()
     bootstrap_admin()
     swept = sweep_interrupted_runs()
     if swept:

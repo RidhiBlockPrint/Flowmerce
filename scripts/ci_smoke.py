@@ -39,6 +39,9 @@ SECRET_ENV = (
     "WORKFLOW_WEBHOOK_SECRET",
     "ADMIN_PASSWORD",
     "GOOGLE_SERVICE_ACCOUNT_FILE",
+    "SHIPPING_SHOPIFY_CLIENT_ID",
+    "SHIPPING_SHOPIFY_CLIENT_SECRET",
+    "SHIPPING_SHOPIFY_ACCESS_TOKEN",
 )
 SECRET_MARKERS = ("shpat_", "private_key", "sk-ant", "password_hash", "admin_token")
 HOME_KEYS = {
@@ -68,8 +71,12 @@ WEB_ROUTES = (
     "/integrations",
     "/audit",
     "/workspace/ridhi",
+    "/shipping",
+    "/shipping/shipments",
+    "/shipping/analytics",
+    "/shipping/checks",
 )
-WEB_MISSING = ("/users", "/shipping", "/approvals", "/merchandising", "/no-such-page")
+WEB_MISSING = ("/users", "/shipping/nothing-here", "/approvals", "/merchandising", "/no-such-page")
 
 
 def free_port() -> int:
@@ -188,6 +195,26 @@ def run_checks(client: Client, data_dir: Path) -> list[str]:
             ),
         )
         check("/api/home exposes no secrets", not any(m in body for m in SECRET_MARKERS))
+    status, body = client.request("/api/shipping/summary")
+    check(
+        "/api/shipping/summary answers and is empty on an empty database",
+        status == 200 and json.loads(body).get("empty") is True,
+        f"(got {status})",
+    )
+    status, body = client.request("/api/shipping/status")
+    check(
+        "Shipping reports read-only Shopify access and no credentials",
+        status == 200
+        and json.loads(body).get("readOnlyShopify") is True
+        and json.loads(body).get("shopifyConfigured") is False,
+        f"(got {status})",
+    )
+    status, _ = client.request("/api/shipping/sync", {})
+    check(
+        "Shipping sync without credentials fails safely (no network call)",
+        status == 200,
+        f"(got {status})",
+    )
     status, _ = client.request("/api/home?brand=nope")
     check("/api/home rejects an unknown brand", status == 400, f"(got {status})")
     return check.failures

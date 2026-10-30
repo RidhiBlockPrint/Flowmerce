@@ -1,0 +1,47 @@
+/* ---------- shipping module (uses the Flowmerce tokens from globals.css) ---------- */
+.donut { position: relative; flex: none; }
+.donut svg { width: 100%; height: 100%; }
+.donut-center { position: absolute; inset: 0; display: grid; place-content: center; text-align: center; line-height: 1.1; }
+.donut-center b { font-size: 26px; font-family: var(--serif); }
+.donut-center small { color: var(--muted); font-size: 11px; margin-top: 2px; }
+.columns { display: flex; align-items: flex-end; gap: 8px; padding-top: 18px; }
+.col-bar { flex: 1; min-width: 0; height: 100%; display: flex; flex-direction: column; justify-content: flex-end; align-items: stretch; gap: 4px; position: relative; }
+.col-fill { display: block; border-radius: 6px 6px 2px 2px; min-height: 3px; }
+.col-val { font-size: 11px; font-weight: 650; color: var(--ink-2); text-align: center; }
+.col-lab { font-size: 10.5px; color: var(--muted); text-align: center; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.legend-list { display: flex; flex-direction: column; gap: 6px; font-size: 13px; min-width: 150px; }
+.legend-list button { display: flex; align-items: center; gap: 8px; background: none; border: 0; padding: 2px 0; font: inherit; color: inherit; cursor: pointer; text-align: left; }
+.legend-list button:hover { color: var(--ink); }
+.legend-list i { width: 10px; height: 10px; border-radius: 3px; flex: none; }
+.legend-list b { margin-left: auto; padding-left: 12px; }
+.ship-hero { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(0, 1fr) minmax(0, 1fr); gap: 16px; align-items: stretch; }
+.hero-num { font-family: var(--serif); font-size: 56px; line-height: 1; color: var(--crit); }
+.hero-sub { color: var(--muted); font-size: 13px; margin-top: 6px; }
+.hero-items { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; margin-top: 16px; }
+.hero-item { display: flex; flex-direction: column; gap: 2px; padding: 10px 12px; border-radius: var(--r); border: 1px solid var(--line); background: var(--surface-2); color: inherit; }
+.hero-item:hover { border-color: #d6cdc2; text-decoration: none; }
+.hero-item b { font-size: 20px; }
+.hero-item span { font-size: 12px; color: var(--muted); }
+.progress { height: 6px; border-radius: 99px; background: var(--surface-3); overflow: hidden; margin-top: 8px; }
+.progress i { display: block; height: 100%; border-radius: 99px; background: var(--accent); }
+.stat-card { display: block; color: inherit; }
+.stat-card:hover { text-decoration: none; }
+.stat-card .big { font-family: var(--serif); font-size: 34px; line-height: 1.1; }
+.heat-cell { text-align: center; min-width: 64px; }
+.fact-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin: 14px 0; }
+.fact { background: var(--surface-2); border: 1px solid var(--line-2); border-radius: var(--r); padding: 8px 10px; }
+.fact span { display: block; font-size: 11.5px; color: var(--muted); }
+.fact b { font-size: 14px; overflow-wrap: anywhere; }
+.timeline { margin: 8px 0 14px; display: flex; flex-direction: column; gap: 12px; }
+.tl-step { display: grid; grid-template-columns: 14px 1fr; gap: 10px; align-items: start; }
+.tl-step i { width: 10px; height: 10px; border-radius: 50%; margin-top: 4px; background: var(--line); }
+.tl-step small { display: block; color: var(--muted); }
+.cat-tag { display: inline-flex; align-items: center; gap: 6px; height: 22px; padding: 0 9px; border-radius: 999px; font-size: 11.5px; font-weight: 650; white-space: nowrap; background: var(--surface-3); color: var(--ink-2); }
+.cat-tag i { width: 8px; height: 8px; border-radius: 50%; background: var(--c, var(--muted)); }
+.drawer-section { margin-top: 16px; }
+.drawer-section h4 { margin: 0 0 6px; font-size: 13px; }
+.kpi-btn { text-align: left; font: inherit; color: inherit; cursor: pointer; }
+.kpi-btn:hover { border-color: #d6cdc2; }
+.kpi-btn[aria-pressed='true'] { border-color: var(--accent); box-shadow: inset 0 -3px 0 var(--accent), var(--shadow-1); }
+@media (max-width: 1100px) { .ship-hero { grid-template-columns: minmax(0, 1fr); } }
+@media (max-width: 640px) { .hero-items { grid-template-columns: repeat(2, minmax(0, 1fr)); } .hero-num { font-size: 44px; } }
