@@ -275,3 +275,28 @@ def test_orders_api_groups_paging_filters_and_access(app):
     assert a["carriers"][0]["name"] == "DHL Express" and a["delivered_shipments"] == 1
     assert c.get("/api/shipping/orders/export?group=delayed").text.count("\n") == 13
     assert remote_client(app).get("/api/shipping/orders").status_code == 403
+
+
+def test_partner_carrier_delivered_and_only_amazon_open_counts_as_delivered():
+    repo.save_shipments(
+        [
+            ship(80, carrier="DHL Express", fulfilled=12, delivered=8),  # partner delivered ...
+            ship(
+                80, fid="F80b", carrier="Amazon Logistics", tracking="TBA80", fulfilled=12
+            ),  # ... Amazon never acknowledged
+            ship(81, carrier="USPS", fulfilled=12),  # a partner parcel is still open: stays delayed
+            ship(81, fid="F81b", carrier="Amazon Logistics", tracking="TBA81", fulfilled=12),
+            ship(
+                82, carrier="Amazon Logistics", tracking="TBA82", fulfilled=12
+            ),  # Amazon only: still delayed
+            ship(83, carrier="FedEx", fulfilled=12, delivered=8),
+            ship(83, fid="F83b", carrier="Amazon Logistics", tracking="TBA83", fulfilled=12),
+        ]
+    )
+    repo.set_manual_status("#83", "TBA83", "lost", "team")  # a team mark of lost still wins
+    g = groups()
+    assert g["#80"]["group"] == "delivered" and g["#80"]["delivered_by"] == "amazon_unconfirmed"
+    assert g["#80"]["transit_days"] == 4 and g["#80"]["tier"] == "yellow"
+    assert g["#81"]["group"] == "delayed" and g["#81"]["delivered_by"] is None
+    assert g["#82"]["group"] == "delayed"
+    assert g["#83"]["group"] == "lost_missing"

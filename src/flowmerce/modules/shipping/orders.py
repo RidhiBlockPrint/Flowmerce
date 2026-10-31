@@ -20,7 +20,9 @@ The delay is always measured in whole days from the fulfilled date (to now, or t
 order), and the thresholds are the same for every carrier. Nothing is estimated or invented: a missing date stays
 missing. Needs-action flags: no carrier scan for 5+ days, and a delivery that took 13+ days. An order whose note
 says DONE while Shopify shows it unfulfilled is Amazon MCF (Amazon ships and delivers it itself): it counts as delivered
-once it is 5+ days old and is tagged "Amazon MCF". A team mark of lost / could not deliver still wins."""
+once it is 5+ days old and is tagged "Amazon MCF". A team mark of lost / could not deliver still wins.
+A mixed order whose partner-carrier parcels are delivered and whose only open parcels are Amazon's also counts as delivered
+(tag "Amazon part unconfirmed"), because Shopify never acknowledges Amazon deliveries."""
 
 from __future__ import annotations
 
@@ -174,6 +176,16 @@ def _order(number: str, base: dict | None, ships: list[dict], manual: dict, now:
         and complete_days(created, now) >= NOTE_DONE_MIN_AGE_DAYS
     )
 
+    # Mixed order: a partner carrier (DHL, USPS, FedEx, UPS, ...) delivered its part and the only parcels still open are
+    # Amazon's. Shopify never acknowledges delivery of Amazon parcels, so they cannot hold the order back.
+    def _amazon(s: dict) -> bool:
+        return "amazon" in (s["carrier_name"] or "").lower()
+
+    partner_delivered = any(s["delivered"] and not _amazon(s) for s in shipments)
+    amazon_unconfirmed = (
+        bool(open_tracked) and all(_amazon(s) for s in open_tracked) and partner_delivered
+    )
+
     if any(s["lost"] for s in shipments):
         group, action = (
             "lost_missing",
@@ -184,6 +196,12 @@ def _order(number: str, base: dict | None, ships: list[dict], manual: dict, now:
             "delivered",
             "Fulfilled by Amazon (MCF): the note says DONE and Amazon delivers it itself, so it is treated as delivered. "
             "Shopify still shows the order as not fulfilled.",
+        )
+    elif amazon_unconfirmed:
+        group, action = (
+            "delivered",
+            "Delivered by the partner carrier. The remaining Amazon package has no delivery event in Shopify, so it is "
+            "treated as delivered with it. Open its tracking page if you want to check.",
         )
     elif any(s["scan_age"] is not None and s["scan_age"] >= LOST_AFTER_DAYS for s in open_tracked):
         group, action = (
@@ -273,7 +291,13 @@ def _order(number: str, base: dict | None, ships: list[dict], manual: dict, now:
         "tracking_numbers": [s["tracking_number"] for s in tracked],
         "shipments": shipments,
         "flags": flags,
-        "delivered_by": "amazon_mcf" if (amazon_mcf and group == "delivered") else None,
+        "delivered_by": (
+            "amazon_mcf"
+            if (amazon_mcf and group == "delivered")
+            else "amazon_unconfirmed"
+            if (amazon_unconfirmed and group == "delivered")
+            else None
+        ),
         "exception": exception,
         "needs_action": bool(flags),
         "note": note,
