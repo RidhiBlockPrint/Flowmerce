@@ -196,17 +196,10 @@ def _order(
         bool(open_tracked) and all(_amazon(s) for s in open_tracked) and partner_delivered
     )
 
-    archived = bool(base.get("closed_at"))  # archived (closed) in Shopify
-
     if any(s["lost"] for s in shipments):
         group, action = (
             "lost_missing",
             "Team marked it lost or couldn't deliver. Decide on a reship or refund.",
-        )
-    elif archived:
-        group, action = (
-            "delivered",
-            "Archived in Shopify, so it is treated as delivered.",
         )
     elif amazon_mcf:
         group, action = (
@@ -324,10 +317,8 @@ def _order(
         "shipments": shipments,
         "flags": flags,
         "delivered_by": (
-            "archived"
-            if (archived and group == "delivered")
-            else "amazon_mcf"
-            if (amazon_mcf and group == "delivered" and not archived)
+            "amazon_mcf"
+            if (amazon_mcf and group == "delivered")
             else "amazon_unconfirmed"
             if (amazon_unconfirmed and group == "delivered")
             else None

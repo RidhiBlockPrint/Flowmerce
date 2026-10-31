@@ -54,7 +54,7 @@ def ship(
     }
 
 
-def check(n, status="FULFILLED", note="", ordered=30, cancelled=False, paid="PAID", closed=None):
+def check(n, status="FULFILLED", note="", ordered=30, cancelled=False, paid="PAID"):
     return {
         "order_number": f"#{n}",
         "order_created_at": iso(ordered),
@@ -62,7 +62,6 @@ def check(n, status="FULFILLED", note="", ordered=30, cancelled=False, paid="PAI
         "note": note,
         "cancelled": cancelled,
         "financial_status": paid,
-        **({"closed_at": iso(closed)} if closed is not None else {}),
         "shopify_order_id": f"gid://shopify/Order/{n}",
     }
 
@@ -331,39 +330,3 @@ def test_open_orders_shopify_stopped_refreshing_are_not_counted_as_delayed():
     assert g["#92"]["group"] == "delivered" and g["#93"]["group"] == "lost_missing"
     assert g["#94"]["group"] == "no_tracking_id"
     assert orders.counts(list(g.values()))["stale"] == 1
-
-
-def test_archived_orders_in_shopify_count_as_delivered():
-    repo.save_shipments(
-        [
-            ship(100, fulfilled=20),  # open DHL parcel, 20 days: delayed on its own
-            ship(101, fulfilled=20),
-            ship(102, fulfilled=20),
-        ]
-    )
-    repo.upsert_order_checks(
-        [
-            check(100, closed=3),  # archived: delivered, whatever the carrier data says
-            check(101),  # not archived: stays delayed
-            check(102, closed=3),
-            check(
-                103, "UNFULFILLED", ordered=20, closed=3
-            ),  # archived but never fulfilled in Shopify: still delivered
-        ]
-    )
-    repo.set_manual_status("#102", "TRK102", "lost", "team")  # a team mark of lost still wins
-    g = groups()
-    assert g["#100"]["group"] == "delivered" and g["#100"]["delivered_by"] == "archived"
-    assert g["#101"]["group"] == "delayed" and g["#101"]["delivered_by"] is None
-    assert g["#102"]["group"] == "lost_missing"
-    assert g["#103"]["group"] == "delivered" and g["#103"]["delivered_by"] == "archived"
-
-
-def test_a_later_import_without_archive_data_does_not_wipe_the_archived_date():
-    repo.upsert_order_checks([check(110, closed=2)])
-    repo.upsert_order_checks(
-        [{k: v for k, v in check(110).items() if k != "closed_at"}]
-    )  # e.g. a Supabase import
-    assert repo.order_checks()[0]["closed_at"] is not None
-    repo.upsert_order_checks([{**check(110), "closed_at": None}])  # Shopify says it is open again
-    assert repo.order_checks()[0]["closed_at"] is None

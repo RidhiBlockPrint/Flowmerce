@@ -67,7 +67,6 @@ CHECK_FIELDS = (
     "note",
     "order_total",
     "order_currency",
-    "closed_at",
 )
 CHECK_TEXT = (
     "shopify_order_id",
@@ -237,18 +236,14 @@ def upsert_order_checks(rows: Iterable[dict]) -> int:
                 vals.append(v)
             run(
                 """INSERT INTO shipping_order_checks (order_number, shopify_order_id, order_created_at, fulfillment_status,
-                     financial_status, cancelled, note, order_total, order_currency, closed_at, imported_at)
-                   VALUES (?,?,?,?,?,?,?,?,?,?,?)
+                     financial_status, cancelled, note, order_total, order_currency, imported_at) VALUES (?,?,?,?,?,?,?,?,?,?)
                    ON CONFLICT (order_number) DO UPDATE SET shopify_order_id = excluded.shopify_order_id,
                      order_created_at = excluded.order_created_at,
                      fulfillment_status = excluded.fulfillment_status, financial_status = excluded.financial_status,
                      cancelled = excluded.cancelled, note = excluded.note, order_total = excluded.order_total,
-                     order_currency = excluded.order_currency,
-                     closed_at = CASE WHEN ? THEN excluded.closed_at ELSE shipping_order_checks.closed_at END,
-                     imported_at = excluded.imported_at""",
+                     order_currency = excluded.order_currency, imported_at = excluded.imported_at""",
                 *vals,
                 now,
-                1 if "closed_at" in r else 0,
             )
             n += 1
     return n

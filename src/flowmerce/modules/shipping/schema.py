@@ -6,7 +6,7 @@ from __future__ import annotations
 
 from ..seo.db import all_rows, get, run
 
-VERSION = 3
+VERSION = 2
 
 TABLES = """
 CREATE TABLE IF NOT EXISTS shipping_meta (
@@ -87,8 +87,6 @@ UPGRADES = {
         ("shipping_shipments", "order_currency", "TEXT NOT NULL DEFAULT ''"),
         ("shipping_order_checks", "shopify_order_id", "TEXT NOT NULL DEFAULT ''"),
     ],
-    # version 3: when the order was archived (closed) in Shopify; archived orders count as delivered
-    3: [("shipping_order_checks", "closed_at", "TEXT")],
 }
 
 
