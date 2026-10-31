@@ -9,11 +9,12 @@ import { Drawer, useToast } from './overlays';
 import { Icon } from './Icon';
 
 /** Group chip, with the delay tier next to it when the order is slow. */
-export function GroupTag({ group, tier }) {
+export function GroupTag({ group, tier, deliveredBy }) {
     const g = GROUPS[group];
     const t = tier ? TIERS[tier] : null;
     return (<span className="row-wrap gap-4">
       <span className="cat-tag" style={{ '--c': g?.color }}><i/>{g?.label ?? group}</span>
+      {deliveredBy === 'amazon_mcf' ? <span className="cat-tag" style={{ '--c': '#c98a0c' }} title="The note says DONE and Amazon delivers it itself; Shopify still shows the order as not fulfilled"><i/>Amazon MCF</span> : null}
       {t ? <span className="cat-tag" style={{ '--c': t.color }}><i/>{t.label}</span> : null}
     </span>);
 }
@@ -61,7 +62,7 @@ export function OrderDrawer({ order, onClose, onChanged }) {
       <div style={{ padding: 18 }}>
         {q.error ? <div className="callout crit"><Icon name="alert"/>{q.error.message}</div> : null}
         {!o ? <div className="muted">Loading…</div> : (<>
-            <GroupTag group={o.group} tier={o.tier}/>
+            <GroupTag group={o.group} tier={o.tier} deliveredBy={o.delivered_by}/>
             {o.flags.length ? <div className="row-wrap gap-4 mt-8">{o.flags.map((f) => <Pill key={f} tone="crit">{FLAGS[f]}</Pill>)}</div> : null}
             <div className="fact-grid">
               <div className="fact"><span>{o.group === 'delivered' ? 'Transit days' : 'Days in stage'}</span><b>{o.days ?? '—'}</b></div>

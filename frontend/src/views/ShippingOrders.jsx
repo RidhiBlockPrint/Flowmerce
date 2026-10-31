@@ -93,7 +93,7 @@ export default function ShippingOrders() {
                   <td className="hide-md small nowrap">{o.fulfilled_at ? fmtDateTime(o.fulfilled_at) : <span className="faint">Not fulfilled</span>}</td>
                   <td className="hide-md small nowrap">{o.delivered_at ? fmtDateTime(o.delivered_at) : <span className="faint">—</span>}</td>
                   <td className="r">{o.days ?? '—'}</td>
-                  <td><div className="col gap-4"><GroupTag group={o.group} tier={o.tier}/>{o.flags.length ? <div className="row-wrap gap-4">{o.flags.map((f) => <Pill key={f} tone="crit">{FLAGS[f]}</Pill>)}</div> : null}</div></td>
+                  <td><div className="col gap-4"><GroupTag group={o.group} tier={o.tier} deliveredBy={o.delivered_by}/>{o.flags.length ? <div className="row-wrap gap-4">{o.flags.map((f) => <Pill key={f} tone="crit">{FLAGS[f]}</Pill>)}</div> : null}</div></td>
                   <td className="hide-md small" style={{ minWidth: 220 }}>{o.action}</td>
                 </tr>))}
             </tbody>

@@ -147,22 +147,41 @@ def test_every_carrier_uses_the_same_delay_days():
     assert {groups()[f"#{n}"]["tier"] for n in (20, 21, 22, 23)} == {"red"}
 
 
-def test_not_dispatched_orders_come_from_the_order_checks_and_flag_the_done_note():
+def test_not_dispatched_orders_come_from_the_order_checks_and_amazon_mcf_counts_as_delivered():
     repo.upsert_order_checks(
         [
             check(30, "UNFULFILLED", ordered=20),
             check(31, "UNFULFILLED", note="MCF DONE", ordered=20),
             check(32, "UNFULFILLED", ordered=1),
+            check(
+                33, "UNFULFILLED", note="MCF DONE", ordered=1
+            ),  # handed to Amazon only yesterday: not yet
+            check(34, "PARTIALLY_FULFILLED", note="DONE", ordered=20),
         ]
     )
+    repo.save_shipments(
+        [ship(34, fulfilled=15, carrier="DHL Express")]
+    )  # an open DHL package, still delayed
+    repo.save_shipments([ship(35, fulfilled=15, carrier="USPS")])
+    repo.set_manual_status("#35", "TRK35", "lost", "team")
+    repo.upsert_order_checks([check(35, "PARTIALLY_FULFILLED", note="DONE", ordered=20)])
     g = groups()
     assert (
         g["#30"]["group"] == "not_dispatched"
         and g["#30"]["tier"] == "critical"
         and not g["#30"]["flags"]
     )
-    assert g["#31"]["flags"] == ["note_done_unfulfilled"] and g["#31"]["needs_action"]
+    assert (
+        g["#31"]["group"] == "delivered"
+        and g["#31"]["delivered_by"] == "amazon_mcf"
+        and not g["#31"]["needs_action"]
+    )
     assert g["#32"]["group"] == "not_dispatched" and g["#32"]["tier"] is None
+    assert g["#33"]["group"] == "not_dispatched" and g["#33"]["delivered_by"] is None
+    assert (
+        g["#34"]["group"] == "delivered" and g["#34"]["delivered_by"] == "amazon_mcf"
+    )  # delayed DHL part does not hold it back
+    assert g["#35"]["group"] == "lost_missing"  # a team mark of lost still wins
 
 
 def test_lost_missing_by_team_mark_or_no_update_for_14_days():

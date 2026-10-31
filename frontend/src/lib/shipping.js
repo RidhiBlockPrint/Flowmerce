@@ -36,7 +36,6 @@ export const TIERS = {
 };
 export const FLAGS = {
     no_movement: 'No carrier scan for 5+ days',
-    note_done_unfulfilled: 'Note says DONE, Shopify not fulfilled',
     delivered_late: 'Delivered late (13+ days)',
 };
 

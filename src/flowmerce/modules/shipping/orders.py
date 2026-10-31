@@ -18,8 +18,9 @@ Primary groups, in the order they are decided:
 
 The delay is always measured in whole days from the fulfilled date (to now, or to the delivered date for a delivered
 order), and the thresholds are the same for every carrier. Nothing is estimated or invented: a missing date stays
-missing. Needs-action flags: no carrier scan for 5+ days, an order note that says DONE while Shopify shows the order
-unfulfilled (the MCF case), and a delivery that took 13+ days."""
+missing. Needs-action flags: no carrier scan for 5+ days, and a delivery that took 13+ days. An order whose note
+says DONE while Shopify shows it unfulfilled is Amazon MCF (Amazon ships and delivers it itself): it counts as delivered
+once it is 5+ days old and is tagged "Amazon MCF". A team mark of lost / could not deliver still wins."""
 
 from __future__ import annotations
 
@@ -49,7 +50,7 @@ GROUPS = (
     "no_carrier",
 )
 TIERS = ("yellow", "orange", "red", "critical")
-FLAGS = ("no_movement", "note_done_unfulfilled", "delivered_late")
+FLAGS = ("no_movement", "delivered_late")
 GROUP_LABEL = {
     "delivered": "Delivered",
     "in_transit": "In transit",
@@ -61,7 +62,6 @@ GROUP_LABEL = {
 }
 FLAG_LABEL = {
     "no_movement": "No carrier scan for 5+ days",
-    "note_done_unfulfilled": "Note says DONE, Shopify not fulfilled",
     "delivered_late": "Delivered late (13+ days)",
 }
 
@@ -164,11 +164,26 @@ def _order(number: str, base: dict | None, ships: list[dict], manual: dict, now:
     flags: list[str] = []
     days: int | None = None
     transit: int | None = None
+    # Amazon MCF: the team's note says DONE (the order was handed to Amazon, which ships and delivers it itself) while
+    # Shopify still shows the order unfulfilled. Such an order is treated as delivered once it is a few days old.
+    amazon_mcf = bool(
+        re.search(r"\bdone\b", note, re.I)
+        and status
+        and status != "FULFILLED"
+        and created
+        and complete_days(created, now) >= NOTE_DONE_MIN_AGE_DAYS
+    )
 
     if any(s["lost"] for s in shipments):
         group, action = (
             "lost_missing",
             "Team marked it lost or couldn't deliver. Decide on a reship or refund.",
+        )
+    elif amazon_mcf:
+        group, action = (
+            "delivered",
+            "Fulfilled by Amazon (MCF): the note says DONE and Amazon delivers it itself, so it is treated as delivered. "
+            "Shopify still shows the order as not fulfilled.",
         )
     elif any(s["scan_age"] is not None and s["scan_age"] >= LOST_AFTER_DAYS for s in open_tracked):
         group, action = (
@@ -225,9 +240,6 @@ def _order(number: str, base: dict | None, ships: list[dict], manual: dict, now:
         for s in open_tracked
     ):
         flags.append("no_movement")
-    if re.search(r"\bdone\b", note, re.I) and status and status != "FULFILLED" and created:
-        if complete_days(created, now) >= NOTE_DONE_MIN_AGE_DAYS:
-            flags.append("note_done_unfulfilled")
 
     exception = next(
         (s["exception"] for s in shipments if s["exception"] and not s["delivered"]), ""
@@ -261,6 +273,7 @@ def _order(number: str, base: dict | None, ships: list[dict], manual: dict, now:
         "tracking_numbers": [s["tracking_number"] for s in tracked],
         "shipments": shipments,
         "flags": flags,
+        "delivered_by": "amazon_mcf" if (amazon_mcf and group == "delivered") else None,
         "exception": exception,
         "needs_action": bool(flags),
         "note": note,
