@@ -22,6 +22,7 @@ export const GROUPS = {
     delivered: { label: 'Delivered', color: '#2f5d8a' },
     in_transit: { label: 'In transit', color: '#2d6a3e' },
     delayed: { label: 'Delayed', color: '#d9661a' },
+    stale: { label: 'Not refreshed', color: '#a05a00' },
     unfulfilled: { label: 'Unfulfilled', color: '#8b8279' },
     lost_missing: { label: 'Lost / missing', color: '#7a1a12' },
     no_tracking_id: { label: 'No tracking ID', color: '#c98a0c' },

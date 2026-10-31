@@ -117,7 +117,7 @@ def candidates(now: datetime | None = None, limit: int = DEFAULT_LIMIT) -> list[
     seen: set[str] = set()
     picked: list[tuple[int, int, dict]] = []
     for o in orders.build_orders(now):
-        if o["group"] not in ("delayed", "in_transit"):
+        if o["group"] not in ("delayed", "in_transit", "stale"):
             continue
         for s in o["shipments"]:
             if s["tracked"] and not s["delivered"] and s["tracking_number"] not in seen:

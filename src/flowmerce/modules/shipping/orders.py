@@ -41,11 +41,13 @@ NO_MOVEMENT_DAYS = 5
 LOST_AFTER_DAYS = 14
 LATE_DELIVERY_DAYS = 13
 NOTE_DONE_MIN_AGE_DAYS = 5
+STALE_AFTER_DAYS = 2
 
 GROUPS = (
     "delivered",
     "in_transit",
     "delayed",
+    "stale",
     "unfulfilled",
     "lost_missing",
     "no_tracking_id",
@@ -57,6 +59,7 @@ GROUP_LABEL = {
     "delivered": "Delivered",
     "in_transit": "In transit",
     "delayed": "Delayed",
+    "stale": "Not refreshed",
     "unfulfilled": "Unfulfilled",
     "lost_missing": "Lost / missing",
     "no_tracking_id": "No tracking ID",
@@ -154,7 +157,14 @@ def _shipment(r: dict, manual: dict, now: datetime) -> dict:
     }
 
 
-def _order(number: str, base: dict | None, ships: list[dict], manual: dict, now: datetime) -> dict:
+def _order(
+    number: str,
+    base: dict | None,
+    ships: list[dict],
+    manual: dict,
+    now: datetime,
+    stale_days: int | None = None,
+) -> dict:
     base = base or {}
     shipments = [_shipment(r, manual, now) for r in ships]
     created = _dt(base.get("order_created_at") or (ships[0]["order_created_at"] if ships else None))
@@ -202,6 +212,21 @@ def _order(number: str, base: dict | None, ships: list[dict], manual: dict, now:
             "delivered",
             "Delivered by the partner carrier. The remaining Amazon package has no delivery event in Shopify, so it is "
             "treated as delivered with it. Open its tracking page if you want to check.",
+        )
+    elif open_tracked and stale_days is not None and stale_days >= STALE_AFTER_DAYS:
+        group, action = (
+            "stale",
+            f"Shopify has not refreshed this order for {stale_days} days (Shopify only gives this app orders from the "
+            "last 60 days), so its delivery status is unknown. Check the carrier tracking page and mark it, or use "
+            "the tracking-service check.",
+        )
+        days = max(
+            (
+                s["days_since_fulfilled"]
+                for s in open_tracked
+                if s["days_since_fulfilled"] is not None
+            ),
+            default=None,
         )
     elif any(s["scan_age"] is not None and s["scan_age"] >= LOST_AFTER_DAYS for s in open_tracked):
         group, action = (
@@ -320,13 +345,20 @@ def build_orders(now: datetime | None = None) -> list[dict]:
     manual = repo.manual_statuses()
     team_notes = repo.notes()
     by_order: dict[str, list[dict]] = defaultdict(list)
-    for r in drop_superseded(repo.all_shipments()):
+    rows = drop_superseded(repo.all_shipments())
+    for r in rows:
         by_order[r["order_number"]].append(r)
+    # Shopify only returns orders from the last 60 days, so an older order stops being refreshed. Compare each order's
+    # last refresh with the newest refresh of any order (not with the clock, so a stopped sync does not mark everything).
+    refreshed = [d for r in rows if (d := _dt(r["last_checked_at"]))]
+    latest = max(refreshed, default=None)
     out = []
     for number in sorted(set(checks) | set(by_order)):
         if number in bad:
             continue
-        o = _order(number, checks.get(number), by_order.get(number, []), manual, now)
+        mine = [d for r in by_order.get(number, []) if (d := _dt(r["last_checked_at"]))]
+        gap = (latest - max(mine)).days if latest and mine else None
+        o = _order(number, checks.get(number), by_order.get(number, []), manual, now, gap)
         o["team_note"] = (team_notes.get(number) or {}).get("note", "")
         out.append(o)
     return out

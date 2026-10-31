@@ -9,7 +9,7 @@ import { Icon } from '../components/Icon';
 import { ExportButton, LookupButton, RunBanner, SyncButton } from '../components/shipping';
 import { GroupTag, OrderDrawer } from '../components/order-drawer';
 
-const CHIPS = ['', 'delivered', 'in_transit', 'delayed', 'unfulfilled', 'needs_action', 'lost_missing', 'no_tracking_id', 'no_carrier'];
+const CHIPS = ['', 'delivered', 'in_transit', 'delayed', 'stale', 'unfulfilled', 'needs_action', 'lost_missing', 'no_tracking_id', 'no_carrier'];
 const SORTS = [['priority', 'Sort: most delayed first'], ['newest', 'Sort: newest first'], ['order', 'Sort: order number']];
 const SIZES = [10, 25, 50];
 

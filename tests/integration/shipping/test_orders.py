@@ -300,3 +300,33 @@ def test_partner_carrier_delivered_and_only_amazon_open_counts_as_delivered():
     assert g["#81"]["group"] == "delayed" and g["#81"]["delivered_by"] is None
     assert g["#82"]["group"] == "delayed"
     assert g["#83"]["group"] == "lost_missing"
+
+
+def test_open_orders_shopify_stopped_refreshing_are_not_counted_as_delayed():
+    old = iso(5)
+    repo.save_shipments(
+        [
+            ship(
+                90, fulfilled=40, checked=iso(0)
+            ),  # refreshed by the latest sync: genuinely delayed
+            ship(
+                91, fulfilled=40, checked=old
+            ),  # older than Shopify's 60-day window: frozen five days ago
+            ship(92, fulfilled=40, delivered=30, checked=old),  # delivered: its age does not matter
+            ship(93, fulfilled=40, checked=old),  # team marked lost: the mark wins
+            ship(
+                94, carrier="Amazon Logistics", tracking="", fulfilled=40, checked=old
+            ),  # no tracking id group is unchanged
+        ]
+    )
+    repo.set_manual_status("#93", "TRK93", "lost", "team")
+    g = groups()
+    assert g["#90"]["group"] == "delayed" and g["#91"]["group"] == "stale"
+    assert (
+        g["#91"]["tier"] is None
+        and g["#91"]["days"] == 40
+        and "has not refreshed" in g["#91"]["action"]
+    )
+    assert g["#92"]["group"] == "delivered" and g["#93"]["group"] == "lost_missing"
+    assert g["#94"]["group"] == "no_tracking_id"
+    assert orders.counts(list(g.values()))["stale"] == 1
