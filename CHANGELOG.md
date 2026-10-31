@@ -2,6 +2,25 @@
 
 Format: newest first. Types: Added, Changed, Fixed, Removed, Architecture.
 
+## 2026-10-31 (Shipping: master database)
+
+- **Master database** from the owner's "Ridhi Shopify Database" design ([ADR 0008](docs/decisions/0008-master-database-for-shipping.md)): the tables `stores`, `orders`, `items`, `shipments` and `events` with the design's names and columns, in `data/master.sqlite`, plus the matching Postgres DDL for Supabase (`db/master_shipping.sql`, `/api/shipping/master/schema`). Customer details are included, as chosen.
+- **Filled from Shopify, read-only** (`master_sync.py`): the first run copied 3,367 orders, 5,651 items, 3,610 shipments and 49,908 tracking events (Shopify's last-60-days window). Columns owned by people or jobs are never overwritten, late older messages are ignored and repeated scans are refused. Customer id, product / variant ids and risk level stay empty (Shopify access).
+- "Sync master data" card on the Shipping overview (`/api/shipping/master/status`, `/master/sync`); the scheduler refreshes it every 6 hours when credentials exist.
+- 164 tests, ruff and mypy pass.
+
+## 2026-10-31 (Shipping rebuilt around orders, and the rules added since)
+
+Owner decisions: classify by delivery status, delay measured in days from the fulfilled date, the same days for every carrier.
+
+- **Order-level model** (`modules/shipping/orders.py`, `/api/shipping/orders...`): every order is in one group: Delivered, In transit (0-3 days), Delayed (yellow 4-5, orange 6-8, red 9-12, critical 13+), Not refreshed, Unfulfilled, Lost / missing (team mark, or no carrier update for 14+ days), No tracking ID and No carrier tracking. Needs action is an overlay: no scan for 5+ days and a delivery that took 13+ days. Pages: Overview, Orders (with an order drawer and a team check per shipment) and Analytics (transit time per carrier).
+- **Unfulfilled** orders are their own section with no delay tier: the app tracks the shipment, so the clock starts when the order is marked fulfilled.
+- **Delivered by rule:** an order whose note says DONE while Shopify shows it unfulfilled is Amazon MCF and counts as delivered once 5+ days old (tag "Amazon MCF"); a mixed order whose partner-carrier parcels (DHL, USPS, FedEx, ...) are delivered and whose only open parcels are Amazon's counts as delivered (tag "Amazon part unconfirmed"). A team mark of lost still wins.
+- **Not refreshed:** Shopify only returns orders from the last 60 days, so an older open order stops updating (e.g. #4368). Such an order is no longer counted as In transit / Delayed; the real fix is the `read_all_orders` scope.
+- **Tracking-service lookup** (`tracking.py`, "Check with tracking service", `TRACK17_API_KEY`) for parcels Shopify never marks delivered. Not verified against the live service.
+- Tried and **reverted** at the owner's request: counting archived Shopify orders as delivered (it emptied Delayed), keeping lost/missing out of every total, hiding phantom rows with a re-check button.
+- Current data (orders): delivered 2,985; in transit 209; delayed 322; not refreshed 10; unfulfilled 392; lost / missing 16; needs action 29.
+
 ## 2026-10-30 (Shipping: packages fulfilled by hand)
 
 - New category **"Fulfilled by hand, tracked package delivered"** (`covered`). A package with no tracking number (marked fulfilled by hand in Shopify, e.g. MCF orders) used to stay "carrier unconfirmed" even when the order's tracked packages were delivered. It is now covered when Shopify says the whole order is FULFILLED and every package that has a tracking number is delivered. It leaves the unconfirmed queue and the active counts, has its own tag, count (Overview legend, Shipments tile, quick view, Checks tile) and `view=covered` filter, and a team mark on the package still overrides it. Nothing is changed in Shopify or deleted. On the current data: 108 packages covered, unconfirmed 811 -> 700 (e.g. order #5311). Amazon tracking is a separate piece of work.

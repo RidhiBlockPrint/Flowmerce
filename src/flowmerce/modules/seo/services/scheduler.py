@@ -7,6 +7,7 @@ import threading
 import time
 
 from ..config import BRAND_IDS
+from ...shipping.master_sync import tick as master_tick
 from ...shipping.sync import tick as shipping_tick
 from ..util import ms_since
 from .runs import last_run
@@ -22,6 +23,10 @@ def tick() -> None:
         shipping_tick()  # read-only Shopify sync for the Shipping module, when its credentials are set
     except Exception as e:  # noqa: BLE001
         print("shipping sync failed:", e)
+    try:
+        master_tick()  # copies orders, items, shipments and scans into the master database
+    except Exception as e:  # noqa: BLE001
+        print("master database sync failed:", e)
     for b in BRAND_IDS:
         if is_paused(b):
             continue

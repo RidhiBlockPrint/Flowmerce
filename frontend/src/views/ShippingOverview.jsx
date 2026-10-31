@@ -7,7 +7,7 @@ import { FLAGS, GROUPS, TIERS } from '../lib/shipping';
 import { BarList, Columns } from '../components/charts';
 import { Card, Empty, ErrorState, LoadingBlock, PageHead } from '../components/ui';
 import { Icon } from '../components/Icon';
-import { ExportButton, RunBanner, SyncButton } from '../components/shipping';
+import { ExportButton, MasterCard, RunBanner, SyncButton } from '../components/shipping';
 
 const ORDER = ['delivered', 'in_transit', 'delayed', 'stale', 'unfulfilled', 'needs_action', 'lost_missing', 'no_tracking_id', 'no_carrier'];
 const HINT = {
@@ -68,5 +68,6 @@ export default function ShippingOverview() {
             </Card>
           </div>
         </div>) : null}
+      <div style={{ marginTop: 16 }}><MasterCard /></div>
     </>);
 }

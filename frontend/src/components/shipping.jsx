@@ -5,7 +5,7 @@ import { api, download, useApi, qs } from '../lib/api';
 import { useApp } from '../lib/app';
 import { fmtDateTime, timeAgo } from '../lib/format';
 import { CATS, MANUAL, MARK_ACTION } from '../lib/shipping';
-import { Button, Pill } from './ui';
+import { Button, Card, Pill } from './ui';
 import { Drawer, useToast } from './overlays';
 import { Icon } from './Icon';
 
@@ -192,4 +192,37 @@ export function LookupButton({ onDone }) {
         }
     };
     return <Button size="sm" icon="search" loading={busy} onClick={go} title="Asks the tracking service about the most delayed open parcels (up to 40 per click) and saves what it reports">Check with tracking service</Button>;
+}
+
+/** Master database: how many rows each table holds and when it was last filled from Shopify. */
+export function MasterCard() {
+    const { can } = useApp();
+    const toast = useToast();
+    const q = useApi('/shipping/master/status');
+    const [busy, setBusy] = useState(false);
+    const sync = async () => {
+        setBusy(true);
+        try {
+            const r = await api.post('/shipping/master/sync');
+            if (r.status === 'failed')
+                toast.error(new Error(r.error || 'The master sync failed.'));
+            else
+                toast.ok(`Master database: ${r.orders} orders, ${r.items} items, ${r.shipments} shipments, ${r.events} events.`);
+            q.reload();
+        }
+        catch (e) {
+            toast.error(e);
+        }
+        finally {
+            setBusy(false);
+        }
+    };
+    const d = q.data;
+    const last = d?.last_sync;
+    return (<Card title="Master database" sub="Orders, order lines, shipments and tracking events copied from Shopify (read-only), in the design of your Ridhi Shopify Database" actions={can('analytics:sync') ? <Button size="sm" icon="refresh" loading={busy} onClick={sync} title="Reads every order from the last 60 days from Shopify. Takes a few minutes.">Sync master data</Button> : null}>
+      {d ? (<div className="kpis">
+          {['orders', 'items', 'shipments', 'events'].map((t) => <div key={t} className="kpi"><div className="kpi-label">{t}</div><div className="kpi-value">{(d.counts[t] ?? 0).toLocaleString('en-US')}</div></div>)}
+        </div>) : null}
+      <p className="muted xs mt-8">{last ? `Last sync ${timeAgo(last.finished_at || last.started_at)}: ${last.status}${last.error ? ` (${last.error})` : ''}${last.status === 'success' && !last.customer_data ? ' · customer details were not available' : ''}.` : 'Not synced yet.'} Shopify only returns orders from the last 60 days, and customer ID, product and variant IDs and the risk level are not available to this app.</p>
+    </Card>);
 }
