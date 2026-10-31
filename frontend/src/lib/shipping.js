@@ -17,6 +17,29 @@ export const MANUAL = { delivered: 'Delivered', lost: 'Lost', failed: 'Could not
 export const MARK_ACTION = { delivered: 'Mark delivered', lost: 'Mark lost', failed: "Couldn't deliver", in_transit: 'Still in transit' };
 export const MCF_LEVEL = { critical: 'Critical · 10+ days', watch: 'Watch · 7+ days', alert: 'Alert · 5+ days' };
 
+/** Order-level groups (see modules/shipping/orders.py). */
+export const GROUPS = {
+    delivered: { label: 'Delivered', color: '#2f5d8a' },
+    in_transit: { label: 'In transit', color: '#2d6a3e' },
+    delayed: { label: 'Delayed', color: '#d9661a' },
+    not_dispatched: { label: 'Not dispatched', color: '#8b8279' },
+    lost_missing: { label: 'Lost / missing', color: '#7a1a12' },
+    no_tracking_id: { label: 'No tracking ID', color: '#c98a0c' },
+    no_carrier: { label: 'No carrier tracking', color: '#6b4fbb' },
+    needs_action: { label: 'Needs action', color: '#b42318' },
+};
+export const TIERS = {
+    yellow: { label: 'Yellow 4-5 days', color: '#c98a0c' },
+    orange: { label: 'Orange 6-8 days', color: '#d9661a' },
+    red: { label: 'Red 9-12 days', color: '#b42318' },
+    critical: { label: 'Critical 13+ days', color: '#7a1a12' },
+};
+export const FLAGS = {
+    no_movement: 'No carrier scan for 5+ days',
+    note_done_unfulfilled: 'Note says DONE, Shopify not fulfilled',
+    delivered_late: 'Delivered late (13+ days)',
+};
+
 export function isShippingPath(pathname) {
     return pathname === '/shipping' || pathname.startsWith('/shipping/');
 }

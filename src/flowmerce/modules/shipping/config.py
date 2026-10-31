@@ -21,6 +21,7 @@ class ShippingConfig:
     yellow_days: int
     orange_days: int
     red_days: int
+    critical_days: int = 13
 
     @property
     def thresholds(self) -> dict:
@@ -65,4 +66,5 @@ def load_config() -> ShippingConfig:
         yellow_days=int(_pick("SHIPPING_YELLOW_DAYS", "YELLOW_THRESHOLD_DAYS", default="4")),
         orange_days=int(_pick("SHIPPING_ORANGE_DAYS", "ORANGE_THRESHOLD_DAYS", default="6")),
         red_days=int(_pick("SHIPPING_RED_DAYS", "RED_THRESHOLD_DAYS", default="9")),
+        critical_days=int(_pick("SHIPPING_CRITICAL_DAYS", default="13")),
     )

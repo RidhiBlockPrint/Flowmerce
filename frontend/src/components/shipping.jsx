@@ -49,9 +49,9 @@ export function SyncButton({ onDone }) {
     return <Button size="sm" icon="refresh" loading={busy} onClick={go} title="Reads Shopify orders and fulfilments (read-only) and saves them here">Sync now</Button>;
 }
 
-export function ExportButton({ kind, label, params = {}, icon = 'download', variant = 'secondary' }) {
+export function ExportButton({ kind, label, params = {}, icon = 'download', variant = 'secondary', path }) {
     const toast = useToast();
-    return <Button size="sm" variant={variant} icon={icon} onClick={() => download(`/shipping/export/${kind}${qs(params)}`).catch(toast.error)}>{label}</Button>;
+    return <Button size="sm" variant={variant} icon={icon} onClick={() => download(path ? `/shipping/${path}${qs(params)}` : `/shipping/export/${kind}${qs(params)}`).catch(toast.error)}>{label}</Button>;
 }
 
 const Fact = ({ label, children }) => <div className="fact"><span>{label}</span><b>{children}</b></div>;
@@ -156,15 +156,40 @@ export function ShipmentDrawer({ order, keyId, onClose, onChanged }) {
 
 /** Small Home card: critical / stuck counts from the saved shipments. Shown only when shipments exist. */
 export function ShippingHomeCard() {
-    const { data } = useApi('/shipping/summary');
+    const { data } = useApi('/shipping/orders/overview');
     if (!data || data.empty)
         return null;
-    const k = data.kpis;
+    const c = data.counts;
     return (<Link href="/shipping" className="card clickable module-card">
       <span className="module-head"><span className="module-icon"><Icon name="send"/></span><span className="module-name">Shipping</span></span>
-      <span className="module-purpose">Delayed and at-risk shipments for the Ridhi store.</span>
+      <span className="module-purpose">Delivery status and delays for the Ridhi store.</span>
       <span className="module-latest">
-        <span className="row-wrap gap-8"><Pill tone={k.red ? 'crit' : 'ok'}>{k.red} critical</Pill><Pill tone={k.nomove ? 'warn' : 'neutral'}>{k.nomove} stuck</Pill><Pill tone="neutral">{k.active} active</Pill></span>
+        <span className="row-wrap gap-8"><Pill tone={c.delayed_tiers.critical ? 'crit' : 'ok'}>{c.delayed_tiers.critical} critical</Pill><Pill tone={c.delayed ? 'warn' : 'neutral'}>{c.delayed} delayed</Pill><Pill tone={c.needs_action ? 'warn' : 'neutral'}>{c.needs_action} need action</Pill></span>
       </span>
     </Link>);
+}
+
+/** "Check with tracking service": asks the tracking service about the most delayed open parcels (limited per run). */
+export function LookupButton({ onDone }) {
+    const { can } = useApp();
+    const toast = useToast();
+    const status = useApi('/shipping/status');
+    const [busy, setBusy] = useState(false);
+    if (!can('analytics:sync') || !status.data?.trackingLookupConfigured)
+        return null;
+    const go = async () => {
+        setBusy(true);
+        try {
+            const r = await api.post('/shipping/orders/lookup');
+            toast.ok(`${r.provider}: asked about ${r.asked} parcels, ${r.answered} answered, ${r.now_delivered} now delivered${r.not_known_yet ? `, ${r.not_known_yet} not known to the service yet (try again later)` : ''}.`);
+            onDone?.();
+        }
+        catch (e) {
+            toast.error(e);
+        }
+        finally {
+            setBusy(false);
+        }
+    };
+    return <Button size="sm" icon="search" loading={busy} onClick={go} title="Asks the tracking service about the most delayed open parcels (up to 40 per click) and saves what it reports">Check with tracking service</Button>;
 }

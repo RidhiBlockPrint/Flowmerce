@@ -75,6 +75,7 @@ WEB_ROUTES = (
     "/shipping/shipments",
     "/shipping/analytics",
     "/shipping/checks",
+    "/shipping/orders",
     "/shipping/issues",
 )
 WEB_MISSING = ("/users", "/shipping/nothing-here", "/approvals", "/merchandising", "/no-such-page")

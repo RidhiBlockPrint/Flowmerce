@@ -11,7 +11,8 @@ from starlette.concurrency import run_in_threadpool
 from ..seo import auth
 from ..seo.audit import audit
 from ..seo.util import HttpError, s
-from . import repo, service
+from . import orders as order_model
+from . import repo, service, tracking
 from .alerts import run_alerts
 from .config import load_config
 from .schema import schema_version, table_counts
@@ -77,6 +78,7 @@ def status(request: Request):
         "counts": table_counts(),
         "thresholds": cfg.thresholds,
         "readOnlyShopify": True,
+        "trackingLookupConfigured": tracking.configured_provider() is not None,
     }
 
 
@@ -146,6 +148,93 @@ def analytics(request: Request):
 def issues(request: Request):
     auth.require_perm(request, "view")
     return service.issues()
+
+
+def _order_filters(request: Request) -> dict:
+    group = request.query_params.get("group", "")
+    tier = request.query_params.get("tier", "")
+    flag = request.query_params.get("flag", "")
+    sort = request.query_params.get("sort", "priority")
+    if group and group not in (*order_model.GROUPS, "needs_action"):
+        raise HttpError(400, "Unknown group.", "bad_request")
+    if tier and tier not in order_model.TIERS:
+        raise HttpError(400, "Unknown tier.", "bad_request")
+    if flag and flag not in order_model.FLAGS:
+        raise HttpError(400, "Unknown flag.", "bad_request")
+    if sort not in ("priority", "newest", "order"):
+        raise HttpError(400, "Unknown sort order.", "bad_request")
+    return {
+        "group": group,
+        "tier": tier,
+        "flag": flag,
+        "sort": sort,
+        "carrier": request.query_params.get("carrier", "")[:80],
+        "q": request.query_params.get("q", "")[:80],
+    }
+
+
+@shipping.get("/orders")
+def orders_list(request: Request):
+    auth.require_perm(request, "view")
+    return order_model.list_orders(
+        **_order_filters(request),
+        page=_int(request, "page", 0),
+        size=_int(request, "size", 10, 1, 200),
+    )
+
+
+@shipping.get("/orders/detail")
+def orders_detail(request: Request):
+    auth.require_perm(request, "view")
+    d = order_model.order_detail(request.query_params.get("order", ""))
+    if not d:
+        raise HttpError(404, "Order not found.", "not_found")
+    return d
+
+
+@shipping.get("/orders/overview")
+def orders_overview(request: Request):
+    auth.require_perm(request, "view")
+    return order_model.overview()
+
+
+@shipping.get("/orders/analytics")
+def orders_analytics(request: Request):
+    auth.require_perm(request, "view")
+    return order_model.analytics()
+
+
+@shipping.post("/orders/lookup")
+async def orders_lookup(request: Request):
+    """Ask the tracking service about the most delayed open parcels (limited per run) and save what it reports."""
+    u = auth.require_perm(request, "analytics:sync")
+    if tracking.configured_provider() is None:
+        raise HttpError(
+            400, "No tracking service is set up: add TRACK17_API_KEY to .env.", "not_configured"
+        )
+    try:
+        result = await run_in_threadpool(tracking.check_open_orders)
+    except RuntimeError as exc:
+        raise HttpError(502, str(exc), "tracking_failed") from exc
+    audit(
+        u,
+        "shipping.lookup",
+        "sync",
+        "",
+        summary=f"{result['updated']} of {result['asked']} parcels updated by {result['provider']}",
+    )
+    return result
+
+
+@shipping.get("/orders/export")
+def orders_export(request: Request):
+    auth.require_perm(request, "view")
+    name, text = order_model.export_csv(**_order_filters(request))
+    return Response(
+        text,
+        media_type="text/csv; charset=utf-8",
+        headers={"Content-Disposition": f'attachment; filename="{name}"'},
+    )
 
 
 @shipping.get("/checks")

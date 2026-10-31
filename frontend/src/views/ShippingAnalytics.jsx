@@ -2,104 +2,52 @@
 import { useNavigate } from '../lib/nav';
 import { useApi } from '../lib/api';
 import { fmtInt } from '../lib/format';
-import { CATS } from '../lib/shipping';
-import { Columns, Donut } from '../components/charts';
+import { TIERS } from '../lib/shipping';
+import { Columns } from '../components/charts';
 import { Kpi } from '../components/metrics';
-import { Card, Empty, ErrorState, LoadingBlock, PageHead, Paged, Pill } from '../components/ui';
-import { Icon } from '../components/Icon';
+import { Card, Empty, ErrorState, LoadingBlock, PageHead } from '../components/ui';
 
-const money = (v, cur) => {
-    try {
-        return new Intl.NumberFormat('en-US', { style: 'currency', currency: cur || 'USD', maximumFractionDigits: 0 }).format(v);
-    }
-    catch {
-        return fmtInt(Math.round(v));
-    }
-};
-const HEALTH_TONE = { 'Needs action': 'crit', Watch: 'warn', Healthy: 'ok' };
-const HEAT = ['red', 'orange', 'yellow', 'grey', 'on_track', 'no_scan'];
-
-/** Shipping analytics from the saved shipment records: aging, weeks, carriers, stages and what to do today. */
+/** Transit time (fulfilled to delivered) per carrier and the spread of delivery times. */
 export default function ShippingAnalytics() {
-    const { data, error, loading, reload } = useApi('/shipping/analytics');
+    const { data, error, loading, reload } = useApi('/shipping/orders/analytics');
     const nav = useNavigate();
-    const k = data?.kpis;
-    const maxCell = Math.max(1, ...(data?.carriers ?? []).slice(0, 8).flatMap((c) => Object.values(c.cats)));
+    const c = data?.counts;
     return (<>
-      <PageHead title="Shipping analytics" sub="Computed from the saved shipments. Numbers change when new data is synced or imported."/>
+      <PageHead title="Shipping analytics" sub="How long deliveries take, from the fulfilled date to the delivered date. Delivery times come from Shopify's delivered status, so carriers Shopify cannot track are missing here."/>
       <ErrorState error={error} onRetry={reload}/>
       {loading && !data ? <LoadingBlock rows={6}/> : null}
-      {data?.empty ? <Card><Empty icon="analytics" title="No shipments to analyse yet">Sync or import shipments first.</Empty></Card> : null}
+      {data?.empty ? <Card><Empty icon="analytics" title="No orders to analyse yet">Sync or import orders first.</Empty></Card> : null}
       {data && !data.empty ? (<div className="col" style={{ gap: 16 }}>
           <div className="kpis">
-            <Kpi label="Active shipments" value={fmtInt(k.active)}/>
-            <Kpi label="Critical (9+ days)" value={`${fmtInt(k.critical)} (${k.critical_pct}%)`}/>
-            <Kpi label="On track share" value={`${k.on_track_pct}%`}/>
-            <Kpi label="Avg days in stage" value={`${k.avg_days} d`}/>
-            <Kpi label="Stuck (no scan 5+ d)" value={fmtInt(k.stuck)}/>
-            <Kpi label="Carriers in use" value={fmtInt(k.carriers)}/>
-            <Kpi label="Value at risk (critical orders)" value={k.value_at_risk === null ? '—' : money(k.value_at_risk, k.value_currency)} na={k.value_at_risk === null} foot={k.value_at_risk === null ? <span className="muted xs">Needs order totals (order checks)</span> : null}/>
+            <Kpi label="Orders" value={fmtInt(c.total)}/>
+            <Kpi label="Delivered shipments measured" value={fmtInt(data.delivered_shipments)}/>
+            <Kpi label="Average transit time" value={data.avg_transit_days === null ? '—' : `${data.avg_transit_days} days`} na={data.avg_transit_days === null}/>
+            <Kpi label="Delayed now" value={fmtInt(c.delayed)} foot={<span className="muted xs">{fmtInt(c.delayed_tiers.critical)} critical</span>}/>
+            <Kpi label="Needs action" value={fmtInt(c.needs_action)}/>
+            <Kpi label="Lost / missing" value={fmtInt(c.lost_missing)}/>
           </div>
-
           <div className="grid cols-2">
-            <Card title="Aging distribution" sub="Click a bar to open those shipments">
-              <Columns ariaLabel="Active shipments by aging stage" items={data.aging.map((a) => ({ label: CATS[a.key].short, value: a.count, color: CATS[a.key].color }))}/>
-              <div className="row-wrap gap-8 mt-8">{data.aging.map((a) => <button key={a.key} className="btn ghost xs" onClick={() => nav(`/shipping/shipments?view=${a.key}`)}>{CATS[a.key].short}</button>)}</div>
+            <Card title="Delivery time" sub="Delivered shipments, by days from fulfilled to delivered">
+              <Columns ariaLabel="Delivered shipments by transit days" items={data.distribution.map((d) => ({ label: `${d.label} d`, value: d.count }))}/>
             </Card>
-            <Card title="Pending by week created" sub="Active shipments, by the week the order was placed">
-              <Columns ariaLabel="Active shipments by order week" items={data.weeks.map((w) => ({ label: w.week.slice(5), value: w.count }))}/>
-            </Card>
-            <Card title="Stage mix" sub="All saved shipments">
-              <div className="row" style={{ gap: 20, flexWrap: 'wrap', alignItems: 'center' }}>
-                <Donut ariaLabel="Shipments by stage" size={150} center={fmtInt(data.stages.pre_dispatch + data.stages.dispatched)} sub="total" items={[
-                    { label: 'Not dispatched', value: data.stages.pre_dispatch, color: '#8b8279' },
-                    { label: 'Dispatched', value: data.stages.dispatched, color: '#d9661a' },
-                    { label: 'Delivered', value: data.stages.delivered, color: '#2f5d8a' },
-                ]}/>
-                <div className="legend-list">
-                  {[['Not dispatched', data.stages.pre_dispatch, '#8b8279'], ['Dispatched', data.stages.dispatched, '#d9661a'], ['Delivered', data.stages.delivered, '#2f5d8a']].map(([l, v, c]) => <div key={l} className="row" style={{ gap: 8 }}><i style={{ width: 10, height: 10, borderRadius: 3, background: c }}/>{l}<b style={{ marginLeft: 'auto' }}>{fmtInt(v)}</b></div>)}
-                </div>
+            <Card title="Delayed orders by tier" sub="Open orders past the expected time. Click a tier to open them." >
+              <div className="hero-items" style={{ gridTemplateColumns: 'repeat(2, minmax(0, 1fr))', marginTop: 0 }}>
+                {Object.keys(TIERS).map((t) => (<button key={t} type="button" className="hero-item" style={{ textAlign: 'left', cursor: 'pointer' }} onClick={() => nav(`/shipping/orders?group=delayed&tier=${t}`)}><b style={{ color: TIERS[t].color }}>{fmtInt(c.delayed_tiers[t])}</b><span>{TIERS[t].label}</span></button>))}
               </div>
             </Card>
-            <Card title="Dispatch day" sub="Active shipments by the weekday they were dispatched">
-              <Columns ariaLabel="Active shipments by dispatch weekday" items={data.dispatch_days.map((d) => ({ label: d.day, value: d.critical + d.other, color: d.critical > d.other ? CATS.red.color : 'var(--ridhi)' }))}/>
-            </Card>
           </div>
-
-          <Card title="Carrier scorecard" sub="Active shipments per carrier" flush>
+          <Card title="Carrier transit times" sub="Delivered shipments only. Slow = 4+ days." flush>
             <div className="table-wrap">
               <table className="t compact">
-                <thead><tr><th>Carrier</th><th className="r">Active</th><th className="r">Critical</th><th className="r">Critical %</th><th className="r">Stuck</th><th className="r">Exceptions</th><th className="r">Avg days</th><th>Health</th></tr></thead>
+                <thead><tr><th>Carrier</th><th className="r">Delivered</th><th className="r">Average days</th><th className="r">Median</th><th className="r">90% within</th><th className="r">Slow (4+ d)</th><th className="r">13+ days</th></tr></thead>
                 <tbody>
-                  {data.carriers.map((c) => (<tr key={c.name} className="clickable" onClick={() => nav(`/shipping/shipments?carrier=${encodeURIComponent(c.name)}`)}>
-                      <td className="strong">{c.name}</td><td className="r">{fmtInt(c.active)}</td><td className="r">{fmtInt(c.critical)}</td><td className="r">{c.critical_pct}%</td>
-                      <td className="r">{fmtInt(c.stuck)}</td><td className="r">{fmtInt(c.exceptions)}</td><td className="r">{c.avg_days} d</td>
-                      <td><Pill tone={HEALTH_TONE[c.health]}>{c.health}</Pill></td>
+                  {data.carriers.map((r) => (<tr key={r.name} className="clickable" onClick={() => nav(`/shipping/orders?carrier=${encodeURIComponent(r.name)}`)}>
+                      <td className="strong">{r.name}</td><td className="r">{fmtInt(r.delivered)}</td><td className="r">{r.avg_days}</td><td className="r">{r.median_days}</td>
+                      <td className="r">{r.p90_days} d</td><td className="r">{fmtInt(r.slow)} ({r.slow_pct}%)</td><td className="r">{fmtInt(r.late)}</td>
                     </tr>))}
                 </tbody>
               </table>
             </div>
-          </Card>
-
-          <Card title="Aging heatmap" sub="Carrier by aging stage. Click a cell to open those shipments" flush>
-            <div className="table-wrap">
-              <table className="t compact">
-                <thead><tr><th>Carrier</th>{HEAT.map((h) => <th key={h} className="r">{CATS[h].short}</th>)}</tr></thead>
-                <tbody>
-                  {data.carriers.slice(0, 8).map((c) => (<tr key={c.name}>
-                      <td className="strong">{c.name}</td>
-                      {HEAT.map((h) => {
-                        const n = c.cats[h] ?? 0;
-                        return (<td key={h} className="r heat-cell" style={{ cursor: n ? 'pointer' : 'default', background: n ? `color-mix(in srgb, ${CATS[h].color} ${Math.round((0.12 + 0.7 * n / maxCell) * 100)}%, transparent)` : undefined }} onClick={n ? () => nav(`/shipping/shipments?view=${h}&carrier=${encodeURIComponent(c.name)}`) : undefined}>{n || '·'}</td>);
-                      })}
-                    </tr>))}
-                </tbody>
-              </table>
-            </div>
-          </Card>
-
-          <Card title="What to do today">
-            {data.tips.length ? <ul className="brief-list">{data.tips.map((t) => <li key={t}><Icon name="arrowRight" size="sm"/><span>{t}</span></li>)}</ul> : <p className="muted small" style={{ margin: 0 }}>Nothing urgent right now.</p>}
           </Card>
         </div>) : null}
     </>);

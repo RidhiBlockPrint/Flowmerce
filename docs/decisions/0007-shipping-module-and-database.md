@@ -22,3 +22,6 @@
 - Risk: **the saved shipments are a snapshot** (last sync 2026-10-17), so every shipment older than nine days shows as critical until a sync runs. Needs the Shopify scopes and credentials.
 - Risk: the ported code is not yet typed or line-length clean (ruff and mypy exceptions in `pyproject.toml`, roadmap debt).
 - No carrier adapter is live: scan-based flags only use scans Shopify provides (DHL events).
+
+## Update (2026-10-31): order-level classification
+The module now classifies **orders**, not shipments (`shipping/orders.py`; groups, tiers and flags are listed in its docstring and the changelog). Delay is measured in whole days from the fulfilled date (to the delivered date for delivered orders) with the same thresholds for every carrier: in transit 0-3, yellow 4-5, orange 6-8, red 9-12, critical 13+. Parcels Shopify never marks delivered (Amazon, mixed orders) can be checked with a tracking service (`tracking.py`, 17TRACK, key in `.env`); until a key is added they rely on the team check. The earlier shipment-level service, its pages and endpoints remain in the code but are no longer linked from the sidebar.

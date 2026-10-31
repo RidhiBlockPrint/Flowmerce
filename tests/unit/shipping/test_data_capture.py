@@ -7,7 +7,7 @@ from datetime import UTC, datetime
 import pytest
 
 from flowmerce.modules.seo.db import all_rows, run
-from flowmerce.modules.shipping import alerts, importer, repo, schema, service
+from flowmerce.modules.shipping import alerts, importer, orders, repo, schema, service
 from flowmerce.modules.shipping.config import ShippingConfig
 from flowmerce.modules.shipping.normalize import normalize_order_checks, normalize_orders
 from flowmerce.modules.shipping.sync import run_sync
@@ -301,3 +301,130 @@ def test_config_accepts_the_original_tracker_setting_names(monkeypatch):
     assert c.has_shopify_credentials
     values["SHIPPING_SHOPIFY_CLIENT_ID"] = "id2"  # the Shipping name wins when both exist
     assert shipping_config.load_config().client_id == "id2"
+
+
+def test_tracking_lookup_saves_only_real_answers_and_is_limited_and_ordered():
+    from flowmerce.modules.shipping import tracking
+    from flowmerce.modules.shipping.carriers import TrackingResult
+
+    base = {f: None for f in repo.SHIPMENT_FIELDS}
+    rows = []
+    for n, days_ago in ((1, 20), (2, 6), (3, 2)):
+        rows.append(
+            base
+            | {
+                "shopify_order_id": f"gid://o/{n}",
+                "order_number": f"#T{n}",
+                "fulfillment_id": f"fT{n}",
+                "tracking_number": f"TBA{n}",
+                "carrier_name": "Amazon Logistics",
+                "order_created_at": f"2026-10-0{n}T00:00:00+00:00",
+                "fulfilled_at": (
+                    NOW.replace(day=NOW.day) - __import__("datetime").timedelta(days=days_ago)
+                ).isoformat(),
+                "raw_tracking_status": "FULFILLED",
+                "normalized_tracking_status": "fulfilled",
+                "last_checked_at": NOW.isoformat(),
+            }
+        )
+    repo.save_shipments(rows)
+
+    class FakeProvider:
+        name = "Fake"
+
+        def __init__(self):
+            self.asked = []
+
+        def lookup(self, numbers):
+            self.asked = numbers
+            delivered = TrackingResult(
+                "DELIVERED", NOW, "Delivered to customer", "", delivered_at=NOW
+            )
+            return {
+                "TBA1": delivered,
+                "TBA2": None,
+                "TBA3": TrackingResult("INTRANSIT", NOW, "On the way", ""),
+            }
+
+    p = FakeProvider()
+    result = tracking.check_open_orders(p, limit=2, now=NOW)
+    assert p.asked == ["TBA1", "TBA2"]  # most delayed first, and only `limit` numbers are sent
+    assert (
+        result["asked"] == 2
+        and result["answered"] == 1
+        and result["now_delivered"] == 1
+        and result["not_known_yet"] == 1
+    )
+    saved = repo.load_shipments()
+    assert (
+        saved["fT1|TBA1"]["normalized_tracking_status"] == "delivered"
+        and saved["fT1|TBA1"]["tracking_source"] == "carrier"
+    )
+    assert (
+        saved["fT2|TBA2"]["normalized_tracking_status"] == "fulfilled"
+        and saved["fT3|TBA3"]["last_scan_at"] is None
+    )  # untouched
+    assert {o["order_number"]: o["group"] for o in orders.build_orders(NOW)}["#T1"] == "delivered"
+
+
+def test_track17_parsing_and_registration_with_a_fake_server():
+    from flowmerce.modules.shipping import tracking
+
+    calls = []
+
+    class Resp:
+        def __init__(self, data):
+            self.data = json.dumps(data).encode()
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *a):
+            return False
+
+        def read(self):
+            return self.data
+
+    def opener(req, timeout=0):
+        calls.append(req.full_url.rsplit("/", 1)[1])
+        assert req.headers["17token"] == "k"
+        if req.full_url.endswith("/gettrackinfo"):
+            return Resp(
+                {
+                    "code": 0,
+                    "data": {
+                        "accepted": [
+                            {
+                                "number": "A",
+                                "track_info": {
+                                    "latest_status": {"status": "Delivered"},
+                                    "latest_event": {
+                                        "time_utc": "2026-10-20T10:00:00Z",
+                                        "description": "Delivered",
+                                    },
+                                },
+                            },
+                            {
+                                "number": "B",
+                                "track_info": {"latest_status": {"status": "NotFound"}},
+                            },
+                        ],
+                        "rejected": [{"number": "C", "error": {"code": -18019902}}],
+                    },
+                }
+            )
+        return Resp({"code": 0, "data": {"accepted": [{"number": "C"}], "rejected": []}})
+
+    out = tracking.Track17("k", opener=opener).lookup(["A", "B", "C"])
+    assert out["A"].delivered_at is not None and out["A"].raw_status == "DELIVERED"
+    assert out["B"] is None and out["C"] is None  # not found / just registered: no guess
+    assert calls == ["gettrackinfo", "register"]
+
+
+def test_lookup_without_a_key_is_refused_clearly(monkeypatch):
+    from flowmerce.modules.shipping import tracking
+
+    monkeypatch.setattr(tracking, "env", lambda k, d="": "")
+    assert tracking.configured_provider() is None
+    with pytest.raises(RuntimeError, match="TRACK17_API_KEY"):
+        tracking.check_open_orders()
