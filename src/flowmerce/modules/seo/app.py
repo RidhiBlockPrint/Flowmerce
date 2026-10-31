@@ -13,6 +13,7 @@ from fastapi import FastAPI, Request
 from fastapi.exceptions import RequestValidationError
 from fastapi.responses import JSONResponse
 
+from ..shipping import master_db
 from ..shipping import repo as shipping_repo
 from ..shipping.api import shipping
 from .api import api
@@ -105,6 +106,7 @@ def bootstrap_admin() -> None:
 def startup(with_scheduler: bool = True) -> FastAPI:
     open_db()
     shipping_repo.ready()
+    master_db.open_master()  # the planned master schema: creates the empty tables, nothing is filled
     bootstrap_admin()
     swept = sweep_interrupted_runs()
     if swept:

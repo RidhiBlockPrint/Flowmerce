@@ -1,12 +1,11 @@
-"""The master database for orders, order lines, shipments and their event timeline.
+"""The planned master database schema for orders, order lines, shipments and their event timeline.
 
 It follows the owner's "Ridhi Shopify Database" design (master_spec.json, five of its tables: stores, orders, items,
 shipments, events) with the same table and column names, so the move to Supabase later is a copy: postgres_ddl() writes
 the matching Postgres DDL. It lives in its own SQLite file (data/master.sqlite), separate from the SEO database.
 
-Column ownership comes from the design: "shopify" columns are written only by the Shopify sync, "ours" columns only by
-people through the app, "system" by backend jobs. The sync therefore never overwrites an "ours" or "system" column
-(stage, hold, route, step, responsible ...); it fills what Shopify actually provides and leaves the rest empty."""
+Schema only: nothing in the app fills these tables yet. The design's column ownership (shopify / ours / system / erp /
+carrier) is kept in master_spec.json for when they are filled."""
 
 from __future__ import annotations
 
@@ -106,11 +105,6 @@ def sqlite_ddl() -> list[str]:
     out.append('CREATE INDEX IF NOT EXISTS events_order ON "events" ("order_id", "at")')
     out.append(
         'CREATE UNIQUE INDEX IF NOT EXISTS events_external ON "events" ("external_id") WHERE "external_id" IS NOT NULL'
-    )
-    out.append(
-        "CREATE TABLE IF NOT EXISTS master_sync_log (id INTEGER PRIMARY KEY, started_at TEXT NOT NULL, finished_at TEXT, "
-        "status TEXT NOT NULL, orders INTEGER DEFAULT 0, items INTEGER DEFAULT 0, shipments INTEGER DEFAULT 0, "
-        "events INTEGER DEFAULT 0, customer_data INTEGER DEFAULT 0, error TEXT DEFAULT '')"
     )
     return out
 

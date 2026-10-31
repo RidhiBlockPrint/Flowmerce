@@ -2,12 +2,11 @@
 
 Format: newest first. Types: Added, Changed, Fixed, Removed, Architecture.
 
-## 2026-10-31 (Shipping: master database)
+## 2026-10-31 (Shipping: master database schema, schema only)
 
-- **Master database** from the owner's "Ridhi Shopify Database" design ([ADR 0008](docs/decisions/0008-master-database-for-shipping.md)): the tables `stores`, `orders`, `items`, `shipments` and `events` with the design's names and columns, in `data/master.sqlite`, plus the matching Postgres DDL for Supabase (`db/master_shipping.sql`, `/api/shipping/master/schema`). Customer details are included, as chosen.
-- **Filled from Shopify, read-only** (`master_sync.py`): the first run copied 3,367 orders, 5,651 items, 3,610 shipments and 49,908 tracking events (Shopify's last-60-days window). Columns owned by people or jobs are never overwritten, late older messages are ignored and repeated scans are refused. Customer id, product / variant ids and risk level stay empty (Shopify access).
-- "Sync master data" card on the Shipping overview (`/api/shipping/master/status`, `/master/sync`); the scheduler refreshes it every 6 hours when credentials exist.
-- 164 tests, ruff and mypy pass.
+- Added the planned **master database schema** from the owner's "Ridhi Shopify Database" design ([ADR 0008](docs/decisions/0008-master-database-for-shipping.md)): the tables `stores`, `orders`, `items`, `shipments` and `events` with the design's names and columns, created empty in `data/master.sqlite` at startup, plus the matching Postgres DDL for Supabase (`db/master_shipping.sql`). **Nothing fills the tables.**
+- Removed an overreach from the first attempt (a Shopify sync into the tables, a "Sync master data" card, API endpoints and a 6-hourly background job). The filled database (54 MB, with customer details) was moved to `backups/` and not deleted.
+- 3 schema tests.
 
 ## 2026-10-31 (Shipping rebuilt around orders, and the rules added since)
 

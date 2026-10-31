@@ -11,8 +11,8 @@ from starlette.concurrency import run_in_threadpool
 from ..seo import auth
 from ..seo.audit import audit
 from ..seo.util import HttpError, s
-from . import master_db, master_sync, repo, service, tracking
 from . import orders as order_model
+from . import repo, service, tracking
 from .alerts import run_alerts
 from .config import load_config
 from .schema import schema_version, table_counts
@@ -224,34 +224,6 @@ async def orders_lookup(request: Request):
         summary=f"{result['updated']} of {result['asked']} parcels updated by {result['provider']}",
     )
     return result
-
-
-@shipping.get("/master/status")
-def master_status(request: Request):
-    auth.require_perm(request, "view")
-    return master_sync.status()
-
-
-@shipping.post("/master/sync")
-async def master_sync_now(request: Request):
-    """Copy orders, order lines, shipments and tracking events from Shopify into the master database (read-only)."""
-    u = auth.require_perm(request, "analytics:sync")
-    result = await run_in_threadpool(master_sync.run_master_sync)
-    audit(
-        u,
-        "shipping.master_sync",
-        "sync",
-        "",
-        summary=f"{result['status']}: {result['orders']} orders, {result['shipments']} shipments",
-    )
-    return result
-
-
-@shipping.get("/master/schema")
-def master_schema(request: Request):
-    """The master database as Postgres / Supabase DDL."""
-    auth.require_perm(request, "view")
-    return Response(master_db.postgres_ddl(), media_type="text/plain; charset=utf-8")
 
 
 @shipping.get("/orders/export")
