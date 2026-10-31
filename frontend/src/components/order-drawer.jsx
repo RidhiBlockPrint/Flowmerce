@@ -65,7 +65,7 @@ export function OrderDrawer({ order, onClose, onChanged }) {
             <GroupTag group={o.group} tier={o.tier} deliveredBy={o.delivered_by}/>
             {o.flags.length ? <div className="row-wrap gap-4 mt-8">{o.flags.map((f) => <Pill key={f} tone="crit">{FLAGS[f]}</Pill>)}</div> : null}
             <div className="fact-grid">
-              <div className="fact"><span>{o.group === 'delivered' ? 'Transit days' : 'Days in stage'}</span><b>{o.days ?? '—'}</b></div>
+              <div className="fact"><span>{o.group === 'delivered' ? 'Transit days' : o.group === 'unfulfilled' ? 'Days waiting to be fulfilled' : 'Days since fulfilled'}</span><b>{o.days ?? '—'}</b></div>
               <div className="fact"><span>Shopify status</span><b>{(o.fulfillment_status || '—').replace(/_/g, ' ').toLowerCase()}</b></div>
               <div className="fact"><span>Ordered</span><b>{o.created_at ? fmtDateTime(o.created_at) : '—'}</b></div>
               <div className="fact"><span>Fulfilled</span><b>{o.fulfilled_at ? fmtDateTime(o.fulfilled_at) : 'Not fulfilled'}</b></div>

@@ -9,12 +9,12 @@ import { Card, Empty, ErrorState, LoadingBlock, PageHead } from '../components/u
 import { Icon } from '../components/Icon';
 import { ExportButton, RunBanner, SyncButton } from '../components/shipping';
 
-const ORDER = ['delivered', 'in_transit', 'delayed', 'not_dispatched', 'needs_action', 'lost_missing', 'no_tracking_id', 'no_carrier'];
+const ORDER = ['delivered', 'in_transit', 'delayed', 'unfulfilled', 'needs_action', 'lost_missing', 'no_tracking_id', 'no_carrier'];
 const HINT = {
     delivered: 'Shopify says delivered, or a team mark',
     in_transit: 'Fulfilled, within 3 days',
     delayed: 'Fulfilled, 4+ days and not delivered',
-    not_dispatched: 'Nothing fulfilled yet',
+    unfulfilled: 'Not fulfilled in Shopify yet. No delay is tracked here',
     needs_action: 'Needs a person: see below',
     lost_missing: 'Marked lost, or no update for 14+ days',
     no_tracking_id: 'Carrier known, no tracking number',

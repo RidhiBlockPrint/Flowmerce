@@ -147,7 +147,7 @@ def test_every_carrier_uses_the_same_delay_days():
     assert {groups()[f"#{n}"]["tier"] for n in (20, 21, 22, 23)} == {"red"}
 
 
-def test_not_dispatched_orders_come_from_the_order_checks_and_amazon_mcf_counts_as_delivered():
+def test_unfulfilled_orders_come_from_the_order_checks_and_amazon_mcf_counts_as_delivered():
     repo.upsert_order_checks(
         [
             check(30, "UNFULFILLED", ordered=20),
@@ -167,8 +167,9 @@ def test_not_dispatched_orders_come_from_the_order_checks_and_amazon_mcf_counts_
     repo.upsert_order_checks([check(35, "PARTIALLY_FULFILLED", note="DONE", ordered=20)])
     g = groups()
     assert (
-        g["#30"]["group"] == "not_dispatched"
-        and g["#30"]["tier"] == "critical"
+        g["#30"]["group"] == "unfulfilled"
+        and g["#30"]["tier"] is None  # waiting to be fulfilled is not a delay: no tier
+        and g["#30"]["days"] == 20
         and not g["#30"]["flags"]
     )
     assert (
@@ -176,8 +177,8 @@ def test_not_dispatched_orders_come_from_the_order_checks_and_amazon_mcf_counts_
         and g["#31"]["delivered_by"] == "amazon_mcf"
         and not g["#31"]["needs_action"]
     )
-    assert g["#32"]["group"] == "not_dispatched" and g["#32"]["tier"] is None
-    assert g["#33"]["group"] == "not_dispatched" and g["#33"]["delivered_by"] is None
+    assert g["#32"]["group"] == "unfulfilled" and g["#32"]["tier"] is None
+    assert g["#33"]["group"] == "unfulfilled" and g["#33"]["delivered_by"] is None
     assert (
         g["#34"]["group"] == "delivered" and g["#34"]["delivered_by"] == "amazon_mcf"
     )  # delayed DHL part does not hold it back

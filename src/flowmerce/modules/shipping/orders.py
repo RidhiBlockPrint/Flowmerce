@@ -7,8 +7,8 @@ Primary groups, in the order they are decided:
   excluded         cancelled / refunded orders are left out entirely
   lost_missing     a shipment the team marked lost or "couldn't deliver", or a shipped parcel with no carrier update
                    for 14+ days
-  not_dispatched   nothing fulfilled yet (or only part of the order, with the shipped part delivered): clock from the
-                   order date
+  unfulfilled      not fulfilled in Shopify yet (or only part of the order, with the shipped part delivered). Shipping is
+                   tracked from the fulfilled date, so there is no delay clock or tier here, just the days waiting
   delivered        every tracked shipment is delivered (Shopify status, delivered date or a team mark); a shipment with
                    no tracking number does not hold the order back when another one is tracked and delivered
   no_carrier       fulfilled, but no tracking number and no carrier anywhere on the order
@@ -44,7 +44,7 @@ GROUPS = (
     "delivered",
     "in_transit",
     "delayed",
-    "not_dispatched",
+    "unfulfilled",
     "lost_missing",
     "no_tracking_id",
     "no_carrier",
@@ -55,7 +55,7 @@ GROUP_LABEL = {
     "delivered": "Delivered",
     "in_transit": "In transit",
     "delayed": "Delayed",
-    "not_dispatched": "Not dispatched",
+    "unfulfilled": "Unfulfilled",
     "lost_missing": "Lost / missing",
     "no_tracking_id": "No tracking ID",
     "no_carrier": "No carrier tracking",
@@ -196,8 +196,8 @@ def _order(number: str, base: dict | None, ships: list[dict], manual: dict, now:
         and all(s["delivered"] for s in shipments)
     ):
         group, action = (
-            "not_dispatched",
-            "Not dispatched yet. Check packing and dispatch from the location.",
+            "unfulfilled",
+            "Not fulfilled in Shopify yet. This is the fulfilment step, not shipping, so no delay is tracked here.",
         )
         days = complete_days(created, now) if created else None
     elif tracked and not open_tracked:
@@ -261,7 +261,7 @@ def _order(number: str, base: dict | None, ships: list[dict], manual: dict, now:
         "group": group,
         "group_label": GROUP_LABEL[group],
         "tier": tier_for(days)
-        if group in ("delayed", "not_dispatched", "no_tracking_id", "no_carrier", "delivered")
+        if group in ("delayed", "no_tracking_id", "no_carrier", "delivered")
         else None,
         "days": days,
         "transit_days": transit,
