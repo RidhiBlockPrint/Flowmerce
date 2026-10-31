@@ -14,6 +14,7 @@ export function GroupTag({ group, tier, deliveredBy }) {
     const t = tier ? TIERS[tier] : null;
     return (<span className="row-wrap gap-4">
       <span className="cat-tag" style={{ '--c': g?.color }}><i/>{g?.label ?? group}</span>
+      {deliveredBy === 'archived' ? <span className="cat-tag" style={{ '--c': '#2f5d8a' }} title="The order is archived in Shopify, which counts as delivered"><i/>Archived in Shopify</span> : null}
       {deliveredBy === 'amazon_unconfirmed' ? <span className="cat-tag" style={{ '--c': '#c98a0c' }} title="A partner carrier delivered its parcels; the remaining Amazon parcel has no delivery event in Shopify, so it is treated as delivered with them"><i/>Amazon part unconfirmed</span> : null}
       {deliveredBy === 'amazon_mcf' ? <span className="cat-tag" style={{ '--c': '#c98a0c' }} title="The note says DONE and Amazon delivers it itself; Shopify still shows the order as not fulfilled"><i/>Amazon MCF</span> : null}
       {t ? <span className="cat-tag" style={{ '--c': t.color }}><i/>{t.label}</span> : null}

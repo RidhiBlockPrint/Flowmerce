@@ -103,6 +103,9 @@ def normalize_order_checks(orders: Iterable[dict]):
             "fulfillment_status": (order.get("displayFulfillmentStatus") or "").upper(),
             "financial_status": (order.get("displayFinancialStatus") or "").upper(),
             "cancelled": bool(order.get("cancelledAt")),
+            "closed_at": parse_ts(
+                order.get("closedAt")
+            ),  # set when the order is archived (closed) in Shopify
             "note": (order.get("note") or "").strip(),
             "order_total": _order_total(order),
             "order_currency": _order_currency(order),

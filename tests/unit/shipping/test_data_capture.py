@@ -428,3 +428,10 @@ def test_lookup_without_a_key_is_refused_clearly(monkeypatch):
     assert tracking.configured_provider() is None
     with pytest.raises(RuntimeError, match="TRACK17_API_KEY"):
         tracking.check_open_orders()
+
+
+def test_normalize_order_checks_carries_the_archived_date():
+    o = order(7)
+    o["closedAt"] = "2026-10-05T10:00:00Z"
+    assert next(normalize_order_checks([o]))["closed_at"].isoformat().startswith("2026-10-05")
+    assert next(normalize_order_checks([order(8)]))["closed_at"] is None
